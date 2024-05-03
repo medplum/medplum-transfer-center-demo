@@ -9,6 +9,8 @@ import {
   IconAmbulance,
   IconBuildingHospital,
   IconHospital,
+  IconRadioactive,
+  IconMicroscope,
 } from '@tabler/icons-react';
 
 import { Text } from '@mantine/core';
@@ -16,13 +18,17 @@ import classes from './Navbar.module.css';
 
 const menu = [
   { link: '/dashboard', label: 'Dashboard', icon: IconDashboard },
-  { link: 'transfers', label: 'Transfer', icon: IconAmbulance },
-  { link: 'units', label: 'Units', icon: IconBuildingHospital },
+  { link: 'transfers', label: 'Transfer Center', icon: IconAmbulance },
+  { link: 'laboratory', label: 'Laboratory', icon: IconMicroscope },
+  { link: 'radiology', label: 'Radiology', icon: IconRadioactive },
   { link: 'notifications', label: 'Notifications', icon: IconBellRinging },
-  { link: 'settings', label: 'Settings', icon: IconSettings },
 ];
 
-const adminMenu = [{ link: 'locations', label: 'Locations', icon: IconHospital }];
+const adminMenu = [
+  { link: 'locations', label: 'Locations', icon: IconHospital },
+  { link: 'units', label: 'Units', icon: IconBuildingHospital },
+  { link: 'settings', label: 'Settings', icon: IconSettings },
+];
 
 export default function Navbar() {
   const [active, setActive] = useState('Dashboard');

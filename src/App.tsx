@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { SignInPage } from './pages/SignInPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransferPage } from './pages/TransferPage';
+import { LaboratoryPage } from './pages/LaboratoryPage';
+import { RadiologyPage } from './pages/RadiologyPage';
 import { MainPage } from './pages/MainPage';
 import { SignOutPage } from './pages/SignOutPage';
 import { UnitesPage } from './pages/UnitsPage';
@@ -33,6 +35,8 @@ function App(): JSX.Element | null {
       children: [
         { index: true, element: <MainPage /> },
         { path: 'transfers', element: <TransferPage /> },
+        { path: 'laboratory', element: <LaboratoryPage /> },
+        { path: 'radiology', element: <RadiologyPage /> },
         { path: 'units', element: <UnitesPage /> },
         { path: 'notifications', element: <NotificationsPage /> },
         { path: 'settings', element: <SettingsPage /> },
