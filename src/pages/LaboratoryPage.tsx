@@ -1,7 +1,9 @@
+import { Container, Title } from '@mantine/core';
+
 export function LaboratoryPage(): JSX.Element {
   return (
-    <>
-      <div>Laboratory Page</div>
-    </>
+    <Container fluid>
+      <Title>Laboratory Page</Title>
+    </Container>
   );
 }

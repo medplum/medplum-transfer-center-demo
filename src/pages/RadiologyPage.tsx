@@ -1,7 +1,9 @@
+import { Container, Title } from '@mantine/core';
+
 export function RadiologyPage(): JSX.Element {
   return (
-    <>
-      <div>Radilogy Page</div>
-    </>
+    <Container fluid>
+      <Title>Radilogy Page</Title>
+    </Container>
   );
 }

@@ -1,7 +1,9 @@
+import { Container, Title } from '@mantine/core';
+
 export function SettingsPage(): JSX.Element {
   return (
-    <>
-      <div>Settings Page</div>
-    </>
+    <Container fluid>
+      <Title>Settings Page</Title>
+    </Container>
   );
 }

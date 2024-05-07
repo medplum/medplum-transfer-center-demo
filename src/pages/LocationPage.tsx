@@ -1,7 +1,6 @@
 import { Outlet } from 'react-router-dom';
-
-import { Title } from '@mantine/core';
-import { Document, SearchControl, useMedplumNavigate } from '@medplum/react';
+import { Container, Title } from '@mantine/core';
+import { SearchControl, useMedplumNavigate } from '@medplum/react';
 import { getReferenceString } from '@medplum/core';
 import { CreateLocationModal } from '../components/actions/CreateLocationModal';
 import { useState } from 'react';
@@ -11,7 +10,7 @@ export function LocationsPage(): JSX.Element {
   const navigate = useMedplumNavigate();
 
   return (
-    <Document fill={true}>
+    <Container fluid>
       <Title>Locations</Title>
 
       <SearchControl
@@ -22,6 +21,6 @@ export function LocationsPage(): JSX.Element {
       />
       <Outlet />
       <CreateLocationModal opened={isNewOpen} onClose={() => setIsNewOpen(!isNewOpen)} />
-    </Document>
+    </Container>
   );
 }

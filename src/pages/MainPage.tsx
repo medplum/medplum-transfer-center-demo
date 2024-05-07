@@ -1,8 +1,7 @@
-import { Outlet } from 'react-router-dom';
+import { Container, Title } from '@mantine/core';
 
-import { Title } from '@mantine/core';
 import { Practitioner } from '@medplum/fhirtypes';
-import { Document, ResourceName, SearchControl, useMedplumNavigate, useMedplumProfile } from '@medplum/react';
+import { ResourceName, SearchControl, useMedplumNavigate, useMedplumProfile } from '@medplum/react';
 import { getReferenceString } from '@medplum/core';
 
 export function MainPage(): JSX.Element {
@@ -10,7 +9,7 @@ export function MainPage(): JSX.Element {
   const navigate = useMedplumNavigate();
 
   return (
-    <Document>
+    <Container fluid>
       <Title>
         Welcome <ResourceName value={profile} link />
       </Title>
@@ -19,7 +18,7 @@ export function MainPage(): JSX.Element {
         onClick={(e) => navigate(`/${getReferenceString(e.resource)}`)}
         hideToolbar
       />
-      <Outlet />
-    </Document>
+      {/* <Outlet /> */}
+    </Container>
   );
 }

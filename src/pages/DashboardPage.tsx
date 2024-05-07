@@ -20,7 +20,6 @@ export function DashboardPage(): JSX.Element {
       </AppShell.Header>
       <AppShell.Navbar p="md">
         <Navbar />
-        {/* <NavbarSimple /> */}
       </AppShell.Navbar>
       <AppShell.Main>
         <Outlet />
