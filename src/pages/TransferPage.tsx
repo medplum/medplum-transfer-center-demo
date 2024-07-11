@@ -15,12 +15,13 @@ const PAPER_PROPS: PaperProps = {
 interface ExtendedLocation extends Location {
   numBeds: number;
   numTotalBeds: number;
+  phone: string;
 }
 
 export function TransferPage(): JSX.Element {
   const medplum = useMedplum();
 
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [locations, setLocations] = useState<ExtendedLocation[]>([]);
   const [loadingLocations, setLoadingLocations] = useState<boolean>(true);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
@@ -45,6 +46,7 @@ export function TransferPage(): JSX.Element {
           ...location,
           numBeds: 0,
           numTotalBeds: 0,
+          phone: '123-456-7890',
         }));
 
         // TODO: get the bed count for each location
@@ -69,7 +71,6 @@ export function TransferPage(): JSX.Element {
         await Promise.all(bedCountPromises);
 
         setLocations(floorLocationData);
-        console.log('floorLocationData', floorLocationData);
       } catch (error) {
         setLocationsError('Failed to fetch locations');
       } finally {

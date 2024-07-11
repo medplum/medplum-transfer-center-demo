@@ -4,16 +4,15 @@ import BedStatsCard from '@/components/BedStatsCard';
 import ErrorAlert from '@/components/ErrorAlert';
 import { Location } from '@medplum/fhirtypes';
 
-// type StatsGridProps = {
-//   data?: { title: string; value: string; diff: number; period?: string; ext?: string; icon?: string }[];
-//   error?: ReactNode;
-//   paperProps?: PaperProps;
-//   loading?: boolean;
-// };
+interface ExtendedLocation extends Location {
+  numBeds: number;
+  numTotalBeds: number;
+  phone: string;
+}
 
 type LocationProps = {
-  data?: { id: string; name: string; phone: string; numBeds: number; numTotalBeds: number }[];
-  locationDetails: { [key: string]: unknown[] };
+  data?: ExtendedLocation[];
+  locationDetails: { [key: string]: Location[] };
   error?: boolean | null;
   paperProps?: PaperProps;
 };
@@ -21,7 +20,6 @@ type LocationProps = {
 // export default function StatsGrid({ data, paperProps, error, loading }: StatsGridProps) {
 export default function BedStatsGrid({ data, locationDetails, error, paperProps }: LocationProps) {
   // const floorLocation = data?.map((floor) => <BedStatsCard key={floor.id} data={floor} {...paperProps} />);
-  console.log('locationDetails', locationDetails);
   const floorLocation = data?.map((floor) => (
     <BedStatsCard key={floor.id} data={floor} locationDetails={locationDetails} {...paperProps} />
   ));

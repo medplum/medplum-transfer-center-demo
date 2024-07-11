@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Badge, Group, Paper, PaperProps, Text, Modal, Button, Table } from '@mantine/core';
 import classes from '@/components/BedStatsCard/BedStatsCard.module.css';
 import Surface from '@/components/Surface';
+import { Location } from '@medplum/fhirtypes';
 import {
   IconUserPlus,
   IconDiscount2,
@@ -13,9 +14,16 @@ import {
   IconBedOff,
 } from '@tabler/icons-react';
 
+interface ExtendedLocation extends Location {
+  numBeds: number;
+  numTotalBeds: number;
+  phone: string;
+}
+
 type BedStatsCardProps = {
-  data: { id: number; name: string; phone: string; numBeds: number; numTotalBeds: number };
-  locationDetails: { [key: string]: any[] };
+  data: ExtendedLocation;
+  // data: { id: number; name: string; phone: string; numBeds: number; numTotalBeds: number };
+  locationDetails: { [key: string]: Location[] };
 } & PaperProps;
 
 const icons = {
@@ -29,8 +37,8 @@ const icons = {
 
 const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) => {
   const [opened, setOpened] = useState(false);
-  // const { title, value, period, diff, icon, ext } = data;
   const { id, name, phone, numBeds, numTotalBeds } = data;
+
   // TODO:  Fix hard coded value for diff, ext, and icon
   const diff = Math.round((numBeds / numTotalBeds) * 100);
   const icon = 'bed';
