@@ -1,4 +1,5 @@
-import { Badge, Group, Paper, PaperProps, Text } from '@mantine/core';
+import { useState } from 'react';
+import { Badge, Group, Paper, PaperProps, Text, Modal, Button, Table } from '@mantine/core';
 import classes from '@/components/BedStatsCard/BedStatsCard.module.css';
 import Surface from '@/components/Surface';
 import {
@@ -13,7 +14,8 @@ import {
 } from '@tabler/icons-react';
 
 type BedStatsCardProps = {
-  data: { title: string; value: string; diff: number; period?: string; icon: keyof typeof icons; ext?: string };
+  data: { id: number; name: string; phone: string; numBeds: number; numTotalBeds: number };
+  locationDetails: { [key: string]: any[] };
 } & PaperProps;
 
 const icons = {
@@ -25,37 +27,88 @@ const icons = {
   bedOff: IconBedOff,
 };
 
-const BedStatsCard = ({ data, ...others }: BedStatsCardProps) => {
-  const { title, value, period, diff, icon, ext } = data;
+const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) => {
+  const [opened, setOpened] = useState(false);
+  // const { title, value, period, diff, icon, ext } = data;
+  const { id, name, phone, numBeds, numTotalBeds } = data;
+  // TODO:  Fix hard coded value for diff, ext, and icon
+  const diff = Math.round((numBeds / numTotalBeds) * 100);
+  const icon = 'bed';
   const DiffIcon = diff > 0 ? IconArrowUpRight : IconArrowDownRight;
   const Icon = icons[icon];
+  // const random = 'xzy';
+
+  const sortedDetails = locationDetails[id]?.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+  //TODO: Fix value is the number of beds, need to look this up in medplum for each location
+  // const value = '10';
 
   return (
-    <Surface component={Paper} {...others}>
-      <Group justify="space-between">
-        <Text size="xs" c="dimmed" className={classes.title}>
-          {title}
-        </Text>
-        {period && (
-          <Badge variant="filled" radius="sm">
-            {period}
+    <>
+      <Surface component={Paper} {...others}>
+        <Group justify="space-between">
+          {/* <Text size="xs" c="dimmed" className={classes.title}>
+          {name}
+        </Text> */}
+          {name && (
+            <Badge variant="filled" radius="sm">
+              {name}
+            </Badge>
+          )}
+          {/* {random && (
+          <Badge variant="filled" radius="sm" color="red">
+            {random}
           </Badge>
-        )}
-        <Icon className={classes.icon} size="1.4rem" stroke={1.5} />
-      </Group>
+        )} */}
+          {/* <Icon className={classes.icon} size="1.4rem" stroke={1.5} /> */}
+          <Icon className={classes.icon} size="1.4rem" stroke={1.5} onClick={() => setOpened(true)} />
+        </Group>
 
-      <Group align="flex-end" gap="xs" mt={25}>
-        <Text className={classes.value}>{value}</Text>
-        <Text c={diff > 0 ? 'teal' : 'red'} fz="sm" fw={500} className={classes.diff}>
-          <span>{diff}%</span>
-          <DiffIcon size="1rem" stroke={1.5} />
-        </Text>
-      </Group>
+        <Group align="flex-end" gap="xs" mt={15}>
+          <Text className={classes.value}>
+            {numBeds} of {numTotalBeds}
+          </Text>
+          <Text c={diff > 0 ? 'teal' : 'red'} fz="sm" fw={500} className={classes.diff}>
+            <span>{diff}%</span>
+            <DiffIcon size="1rem" stroke={1.5} />
+          </Text>
+        </Group>
 
-      <Text fz="xs" c="dimmed" mt={7}>
-        Charge Nurse Betty (ext: {ext})
-      </Text>
-    </Surface>
+        <Group align="flex-end" gap="xs" mt={5} color="red">
+          <Text fz="xs" c="dimmed" mt={7}>
+            ext: {phone}
+          </Text>
+          <Text fz="xs" c="dimmed" mt={2}>
+            {id}
+          </Text>
+        </Group>
+      </Surface>
+      <Modal opened={opened} onClose={() => setOpened(false)} title={name}>
+        <div>
+          {sortedDetails ? (
+            <Table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedDetails.map((detail, index) => (
+                  <tr key={index}>
+                    <td>{detail.name}</td>
+                    <td>{detail.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <p>No details available.</p>
+          )}
+          <Button onClick={() => setOpened(false)}>OK</Button>
+        </div>
+      </Modal>
+    </>
   );
 };
 
