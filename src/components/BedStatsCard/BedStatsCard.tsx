@@ -46,7 +46,13 @@ const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) =
   const Icon = icons[icon];
   // const random = 'xzy';
 
-  const sortedDetails = locationDetails[id]?.slice().sort((a, b) => a.name.localeCompare(b.name));
+  let sortedDetails: Location[] = [];
+
+  if (id !== undefined) {
+    sortedDetails = locationDetails[id]?.slice().sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  } else {
+    sortedDetails = [];
+  }
 
   //TODO: Fix value is the number of beds, need to look this up in medplum for each location
   // const value = '10';
@@ -102,7 +108,7 @@ const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) =
                 </tr>
               </thead>
               <tbody>
-                {sortedDetails.map((detail, index) => (
+                {sortedDetails.map((detail: Location, index: number) => (
                   <tr key={index}>
                     <td>{detail.name}</td>
                     <td>{detail.description}</td>

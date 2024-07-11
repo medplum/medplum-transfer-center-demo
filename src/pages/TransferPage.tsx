@@ -99,7 +99,6 @@ export function TransferPage(): JSX.Element {
       <Stack gap="lg">
         <Title>Transfer Center</Title>
         <BedStatsGrid data={locations} locationDetails={locationDetails} error={error} paperProps={paperProps} />
-        {/* <BedStatsGrid data={statsData} error={statsError} loading={statsLoading} paperProps={paperProps} /> */}
         {/* <Paper {...paperProps}>
           <TransferStatusTable data={transferData.slice(0, 7)} error={transferError} loading={transferLoading} />
         </Paper> */}
