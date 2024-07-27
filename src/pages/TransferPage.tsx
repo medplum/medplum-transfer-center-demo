@@ -1,7 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Stack, Container, PaperProps, Title } from '@mantine/core';
-import { useMedplum } from '@medplum/react';
+import { Container, PaperProps, Stack, Title } from '@mantine/core';
 import { Location } from '@medplum/fhirtypes';
+import { useMedplum } from '@medplum/react';
+import { useEffect, useMemo, useState } from 'react';
 
 import BedStatsGrid from '@/components/BedStatsGrid';
 
@@ -13,10 +13,12 @@ const PAPER_PROPS: PaperProps = {
 };
 
 interface ExtendedLocation extends Location {
-  numBeds: number;
+  availableBeds: number;
   numTotalBeds: number;
   phone: string;
 }
+
+const parentOrgId = 'ba836894-122f-42d0-874b-83ea9557e4f3';
 
 export function TransferPage(): JSX.Element {
   const medplum = useMedplum();
@@ -28,57 +30,56 @@ export function TransferPage(): JSX.Element {
   const [locationDetails, setLocationDetails] = useState<{ [key: string]: Location[] }>({});
 
   useEffect(() => {
-    const parentOrgId = 'Location/ba836894-122f-42d0-874b-83ea9557e4f3';
-    const searchParams = {
-      partof: parentOrgId,
-    };
-
-    const fetchLocations = async (): Promise<void> => {
+    async function fetchLocations(): Promise<void> {
       try {
         setLoadingLocations(true);
-        const results = await medplum.searchResources('Location', searchParams);
-        const filteredResults = results.filter((location: Location) => {
-          return location.physicalType?.coding?.[0]?.display === 'Level';
-        });
+        const result = await medplum.graphql(`
+        {
+          Location(id: "${parentOrgId}") {
+            id
+            name
+            LocationList(_reference: partof, physicalType: "lvl") {
+              id
+              name
+              telecom(system: "phone") {
+                value
+              }
+              occupiedLocations: LocationList(_reference: partof, physicalType: "ro", operational_status: "O") {
+                id
+              }
+              unoccupiedLocations: LocationList(_reference: partof, physicalType: "ro", operational_status: "U") {
+                id
+              }
+            }
+          }
+        }
+      `);
 
-        // Initialize the bed count for each location
-        const floorLocationData: ExtendedLocation[] = filteredResults.map((location: Location) => ({
-          ...location,
-          numBeds: 0,
-          numTotalBeds: 0,
-          phone: '123-456-7890',
-        }));
-
-        // TODO: get the bed count for each location
-        const bedCountPromises = floorLocationData.map(async (location) => {
-          const locationId = `Location/${location.id}`;
-          const locationSearchParams = {
-            partof: locationId,
-          };
-
-          const bedLocationResults = await medplum.searchResources('Location', locationSearchParams);
-
-          const numBeds = bedLocationResults.length;
-          location.numBeds = numBeds - Math.floor(Math.random() * 5);
-          location.numTotalBeds = numBeds;
+        const locations = [] as ExtendedLocation[];
+        for (const level of result.data.Location.LocationList) {
+          locations.push({
+            ...level,
+            numTotalBeds: level.occupiedLocations.length + level.unoccupiedLocations.length,
+            availableBeds: level.unoccupiedLocations.length,
+            phone: level.telecom?.[0]?.value,
+          });
 
           setLocationDetails((prevDetails) => ({
             ...prevDetails,
-            [String(location.id)]: bedLocationResults as Location[],
+            [String(level.id as string)]: [...level.occupiedLocations, ...level.unoccupiedLocations],
           }));
-        });
+        }
+        setLocations(locations);
 
-        await Promise.all(bedCountPromises);
-
-        setLocations(floorLocationData);
+        console.log(result.data.Location.LocationList);
       } catch (error) {
         setLocationsError('Failed to fetch locations');
       } finally {
         setLoadingLocations(false);
       }
-    };
+    }
 
-    fetchLocations();
+    fetchLocations().catch(console.error);
   }, [medplum]);
 
   const paperProps = useMemo(() => PAPER_PROPS, []);
@@ -99,9 +100,6 @@ export function TransferPage(): JSX.Element {
       <Stack gap="lg">
         <Title>Transfer Center</Title>
         <BedStatsGrid data={locations} locationDetails={locationDetails} error={error} paperProps={paperProps} />
-        {/* <Paper {...paperProps}>
-          <TransferStatusTable data={transferData.slice(0, 7)} error={transferError} loading={transferLoading} />
-        </Paper> */}
       </Stack>
     </Container>
   );

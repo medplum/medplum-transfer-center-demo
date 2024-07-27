@@ -1,11 +1,11 @@
 // import { ReactNode } from 'react';
-import { SimpleGrid, Skeleton, PaperProps } from '@mantine/core';
 import BedStatsCard from '@/components/BedStatsCard';
 import ErrorAlert from '@/components/ErrorAlert';
+import { PaperProps, SimpleGrid, Skeleton } from '@mantine/core';
 import { Location } from '@medplum/fhirtypes';
 
 interface ExtendedLocation extends Location {
-  numBeds: number;
+  availableBeds: number;
   numTotalBeds: number;
   phone: string;
 }

@@ -1,21 +1,21 @@
-import { useState } from 'react';
-import { Badge, Group, Paper, PaperProps, Text, Modal, Button, Table } from '@mantine/core';
 import classes from '@/components/BedStatsCard/BedStatsCard.module.css';
 import Surface from '@/components/Surface';
+import { Badge, Button, Group, Modal, Paper, PaperProps, Table, Text } from '@mantine/core';
 import { Location } from '@medplum/fhirtypes';
 import {
-  IconUserPlus,
-  IconDiscount2,
-  IconReceipt2,
-  IconCoin,
-  IconArrowUpRight,
   IconArrowDownRight,
+  IconArrowUpRight,
   IconBedFilled,
   IconBedOff,
+  IconCoin,
+  IconDiscount2,
+  IconReceipt2,
+  IconUserPlus,
 } from '@tabler/icons-react';
+import { useState } from 'react';
 
 interface ExtendedLocation extends Location {
-  numBeds: number;
+  availableBeds: number;
   numTotalBeds: number;
   phone: string;
 }
@@ -37,10 +37,10 @@ const icons = {
 
 const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) => {
   const [opened, setOpened] = useState(false);
-  const { id, name, phone, numBeds, numTotalBeds } = data;
+  const { id, name, phone, availableBeds, numTotalBeds } = data;
 
   // TODO:  Fix hard coded value for diff, ext, and icon
-  const diff = Math.round((numBeds / numTotalBeds) * 100);
+  const diff = Math.round((availableBeds / numTotalBeds) * 100);
   const icon = 'bed';
   const DiffIcon = diff > 0 ? IconArrowUpRight : IconArrowDownRight;
   const Icon = icons[icon];
@@ -80,10 +80,10 @@ const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) =
 
         <Group align="flex-end" gap="xs" mt={15}>
           <Text className={classes.value}>
-            {numBeds} of {numTotalBeds}
+            {availableBeds} of {numTotalBeds}
           </Text>
           <Text c={diff > 0 ? 'teal' : 'red'} fz="sm" fw={500} className={classes.diff}>
-            <span>{diff}%</span>
+            <span>{!isNaN(diff) ? diff : '0'}%</span>
             <DiffIcon size="1rem" stroke={1.5} />
           </Text>
         </Group>
