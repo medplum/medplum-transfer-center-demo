@@ -1,9 +1,10 @@
 import { Container, PaperProps, Stack, Title } from '@mantine/core';
-import { Location } from '@medplum/fhirtypes';
-import { useMedplum } from '@medplum/react';
+import { Bundle, Location } from '@medplum/fhirtypes';
+import { useMedplum, useSubscription } from '@medplum/react';
 import { useEffect, useMemo, useState } from 'react';
 
 import BedStatsGrid from '@/components/BedStatsGrid';
+import { resolveId } from '@medplum/core';
 
 const PAPER_PROPS: PaperProps = {
   p: 'md',
@@ -26,7 +27,6 @@ export function TransferPage(): JSX.Element {
   const [locations, setLocations] = useState<ExtendedLocation[]>([]);
   const [loadingLocations, setLoadingLocations] = useState<boolean>(true);
   const [locationsError, setLocationsError] = useState<string | null>(null);
-
   const [locationDetails, setLocationDetails] = useState<{ [key: string]: Location[] }>({});
 
   useEffect(() => {
@@ -81,6 +81,40 @@ export function TransferPage(): JSX.Element {
 
     fetchLocations().catch(console.error);
   }, [medplum]);
+
+  const locationRefStrs = useMemo(() => locations.map((location) => `Location/${location.id as string}`), [locations]);
+  useSubscription(
+    `Location?part-of=${locationRefStrs.join(',')}&physicalType='ro'`,
+    (bundle: Bundle) => {
+      const updatedLoc = bundle.entry?.[1].resource as Location;
+      let availableDelta = 0;
+      if (updatedLoc.operationalStatus?.code !== 'O') {
+        availableDelta++;
+      } else {
+        availableDelta--;
+      }
+      const parentId = resolveId(updatedLoc.partOf);
+      // Find parent in list, update in place
+      const parentLoc = locations.find((loc) => loc.id === parentId);
+      if (!parentLoc) {
+        console.error('Could not find a parent with the listed ID');
+        return;
+      }
+      parentLoc.availableBeds += availableDelta;
+      // Set locations with a spread of the current object to get a new reference
+      setLocations([...locations]);
+    },
+    {
+      subscriptionProps: {
+        extension: [
+          {
+            url: 'https://medplum.com/fhir/StructureDefinition/subscription-supported-interaction',
+            valueCode: 'update',
+          },
+        ],
+      },
+    }
+  );
 
   const paperProps = useMemo(() => PAPER_PROPS, []);
 
