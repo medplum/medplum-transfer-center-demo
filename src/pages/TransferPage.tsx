@@ -38,22 +38,24 @@ export function TransferPage(): JSX.Element {
           Location(id: "${parentOrgId}") {
             id
             name
-            LocationList(_reference: partof, physicalType: "lvl") {
+            LocationList(_reference: partof, physical_type: "lvl") {
               id
               name
               telecom(system: "phone") {
                 value
               }
-              occupiedLocations: LocationList(_reference: partof, physicalType: "ro", operational_status: "O") {
+              occupiedLocations: LocationList(_reference: partof, physical_type: "ro", operational_status: "O") {
                 id
               }
-              unoccupiedLocations: LocationList(_reference: partof, physicalType: "ro", operational_status: "U") {
+              unoccupiedLocations: LocationList(_reference: partof, physical_type: "ro", operational_status: "U") {
                 id
               }
             }
           }
         }
       `);
+
+        console.log(result);
 
         const locations = [] as ExtendedLocation[];
         for (const level of result.data.Location.LocationList) {
@@ -84,7 +86,7 @@ export function TransferPage(): JSX.Element {
 
   const locationRefStrs = useMemo(() => locations.map((location) => `Location/${location.id as string}`), [locations]);
   useSubscription(
-    `Location?part-of=${locationRefStrs.join(',')}&physicalType='ro'`,
+    `Location?physical-type=ro&partof=${locationRefStrs.join(',')}`,
     (bundle: Bundle) => {
       const updatedLoc = bundle.entry?.[1].resource as Location;
       let availableDelta = 0;
