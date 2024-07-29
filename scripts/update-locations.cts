@@ -15,7 +15,10 @@ async function main(): Promise<void> {
   });
 
   // Get all LEVEL-type Location
-  const locations = await medplum.searchResources('Location', { partof: `Location/${parentOrgId}` });
+  const locations = await medplum.searchResources('Location', {
+    partof: `Location/${parentOrgId}`,
+    physicalType: 'lvl',
+  });
   for (const location of locations) {
     await medplum.updateResource({
       ...location,
@@ -26,7 +29,10 @@ async function main(): Promise<void> {
         },
       ],
     });
-    const nestedLocations = await medplum.searchResources('Location', { partof: `Location/${location.id as string}` });
+    const nestedLocations = await medplum.searchResources('Location', {
+      partof: `Location/${location.id as string}`,
+      physicalType: 'ro',
+    });
     for (const nested of nestedLocations) {
       await medplum.updateResource({
         ...nested,

@@ -55,8 +55,6 @@ export function TransferPage(): JSX.Element {
         }
       `);
 
-        console.log(result);
-
         const locations = [] as ExtendedLocation[];
         for (const level of result.data.Location.LocationList) {
           locations.push({
@@ -72,8 +70,6 @@ export function TransferPage(): JSX.Element {
           }));
         }
         setLocations(locations);
-
-        console.log(result.data.Location.LocationList);
       } catch (error) {
         setLocationsError('Failed to fetch locations');
       } finally {
