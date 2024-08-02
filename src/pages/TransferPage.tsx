@@ -1,25 +1,10 @@
 import { Button, Container } from '@mantine/core';
 
 import { getReferenceString } from '@medplum/core';
-import { SearchControl, useMedplumNavigate, useSubscription } from '@medplum/react';
-
-const useSubOpts = {
-  subscriptionProps: {
-    extension: [
-      {
-        url: 'https://medplum.com/fhir/StructureDefinition/subscription-supported-interaction',
-        valueCode: 'create',
-      },
-    ],
-  },
-};
+import { SearchControl, useMedplumNavigate } from '@medplum/react';
 
 export function TransferPage(): JSX.Element {
   const navigate = useMedplumNavigate();
-
-  // This subscription listens for new patient creates
-  // TODO: Make this more selective
-  useSubscription('Patient', () => {}, useSubOpts);
 
   return (
     <Container fluid>
