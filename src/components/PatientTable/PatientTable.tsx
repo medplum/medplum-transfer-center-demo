@@ -1,5 +1,12 @@
 import { ActionIcon, Center, Group, Loader, Menu, Table, Text, UnstyledButton } from '@mantine/core';
-import { Filter, SearchRequest, formatSearchQuery, getReferenceString, isDataTypeLoaded } from '@medplum/core';
+import {
+  Filter,
+  SearchRequest,
+  deepEquals,
+  formatSearchQuery,
+  getReferenceString,
+  isDataTypeLoaded,
+} from '@medplum/core';
 import {
   Bundle,
   Encounter,
@@ -68,6 +75,16 @@ export function PatientTable(props: PatientTableProps): JSX.Element {
   const [outcome, setOutcome] = useState<OperationOutcome | undefined>();
   const { search } = props;
 
+  const [memoizedSearch, setMemoizedSearch] = useState(search);
+
+  // We know that eventually search should stabilize to deepEquals the memoized one
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!deepEquals(search, memoizedSearch)) {
+      setMemoizedSearch(search);
+    }
+  });
+
   const [state, setState] = useState<SearchControlState>({
     selected: {},
     fieldEditorVisible: false,
@@ -87,8 +104,8 @@ export function PatientTable(props: PatientTableProps): JSX.Element {
 
       medplum
         .search(
-          search.resourceType as ResourceType,
-          formatSearchQuery({ ...search, total, fields: undefined }),
+          memoizedSearch.resourceType as ResourceType,
+          formatSearchQuery({ ...memoizedSearch, total, fields: undefined }),
           options
         )
         .then((response) => {
@@ -99,7 +116,7 @@ export function PatientTable(props: PatientTableProps): JSX.Element {
           setOutcome(reason);
         });
     },
-    [medplum, search, total]
+    [medplum, memoizedSearch, total]
   );
 
   const refreshResults = useCallback(() => {
