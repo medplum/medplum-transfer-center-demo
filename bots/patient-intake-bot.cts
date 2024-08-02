@@ -1,4 +1,4 @@
-import { BotEvent, ContentType, getReferenceString, Hl7Message, MedplumClient } from '@medplum/core';
+import { BotEvent, ContentType, createReference, getReferenceString, Hl7Message, MedplumClient } from '@medplum/core';
 import {
   Agent,
   Device,
@@ -89,14 +89,28 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   // After processing all items from QuestionnaireResponse,
   // We can process the data we parsed from it
 
+  // Create the patient in Medplum
+  const patient = await medplum.createResource(results.patient);
+
+  // Create an encounter to track the Patient's location
+  await medplum.createResource({
+    resourceType: 'Encounter',
+    status: 'arrived',
+    class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+    subject: createReference(patient),
+    location: [
+      {
+        location: createReference(results.nextAvailableRoom),
+        status: 'active',
+      },
+    ],
+  });
+
   // Mark room as occupied
   await medplum.updateResource({
     ...results.nextAvailableRoom,
     operationalStatus: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
-  } satisfies Location);
-
-  // Create the patient in Medplum
-  await medplum.createResource(results.patient);
+  });
 
   const bot = await medplum.readReference(event.bot);
 
