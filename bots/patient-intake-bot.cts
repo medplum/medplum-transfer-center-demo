@@ -1,4 +1,4 @@
-import { BotEvent, ContentType, createReference, getReferenceString, Hl7Message, MedplumClient } from '@medplum/core';
+import { BotEvent, ContentType, Hl7Message, MedplumClient, createReference, getReferenceString } from '@medplum/core';
 import {
   Agent,
   Device,
@@ -107,10 +107,13 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   });
 
   // Mark room as occupied
-  await medplum.updateResource({
-    ...results.nextAvailableRoom,
-    operationalStatus: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
-  });
+  await medplum.patchResource('Location', results.nextAvailableRoom.id as string, [
+    {
+      op: 'replace',
+      path: '/operationalStatus',
+      value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
+    },
+  ]);
 
   const bot = await medplum.readReference(event.bot);
 

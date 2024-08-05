@@ -28,7 +28,7 @@ import {
   useResource,
 } from '@medplum/react';
 import { IconRefresh } from '@tabler/icons-react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import classes from './PatientTable.module.css';
 
 export interface PatientTableProps {
@@ -77,13 +77,9 @@ export function PatientTable(props: PatientTableProps): JSX.Element {
 
   const [memoizedSearch, setMemoizedSearch] = useState(search);
 
-  // We know that eventually search should stabilize to deepEquals the memoized one
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!deepEquals(search, memoizedSearch)) {
-      setMemoizedSearch(search);
-    }
-  });
+  if (!deepEquals(search, memoizedSearch)) {
+    setMemoizedSearch(search);
+  }
 
   const [state, setState] = useState<SearchControlState>({
     selected: {},
@@ -158,9 +154,8 @@ export function PatientTable(props: PatientTableProps): JSX.Element {
           ...patient,
           location: (encounters.get(patientRefStr) as Encounter).location?.[0].location as Reference<Location>,
         };
-      } else {
-        return { ...patient };
       }
+      return { ...patient };
     }) as PatientWithLocation[];
   }, [state.searchResponse]);
 
@@ -229,5 +224,3 @@ export function PatientTable(props: PatientTableProps): JSX.Element {
     </div>
   );
 }
-
-export const MemoizedSearchControl = memo(PatientTable);
