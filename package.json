@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix src",
-    "send-adt": "tsx scripts/send-adt-to-agent.cts 0.0.0.0:56000"
+    "send-adt": "tsx scripts/send-adt-to-agent.cts 0.0.0.0:56000",
+    "hl7-server": "tsx scripts/hl7-server.cts"
   },
   "prettier": {
     "printWidth": 120,

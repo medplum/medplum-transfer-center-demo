@@ -1,19 +1,20 @@
 import { ErrorBoundary, Loading, useMedplum, useMedplumProfile } from '@medplum/react';
 // import { IconUser } from '@tabler/icons-react';
 import { Suspense } from 'react';
-import { Navigate, createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 
 import { DashboardPage } from './pages/DashboardPage';
-import { SignInPage } from './pages/SignInPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { TransferPage } from './pages/TransferPage';
 import { LaboratoryPage } from './pages/LaboratoryPage';
-import { RadiologyPage } from './pages/RadiologyPage';
-import { MainPage } from './pages/MainPage';
-import { SignOutPage } from './pages/SignOutPage';
-import { UnitesPage } from './pages/UnitsPage';
-import { NotificationsPage } from './pages/NotificationsPage';
 import { LocationsPage } from './pages/LocationPage';
+import { NewPatientPage } from './pages/NewPatientPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { RadiologyPage } from './pages/RadiologyPage';
+import { Root } from './pages/Root';
+import { SettingsPage } from './pages/SettingsPage';
+import { SignInPage } from './pages/SignInPage';
+import { SignOutPage } from './pages/SignOutPage';
+import { TransferPage } from './pages/TransferPage';
+import { UnitesPage } from './pages/UnitsPage';
 
 function App(): JSX.Element | null {
   const medplum = useMedplum();
@@ -26,15 +27,12 @@ function App(): JSX.Element | null {
   const router = createBrowserRouter([
     {
       path: '/',
-      element: profile ? <Navigate to="/dashboard" /> : <Navigate to="/signin" replace />,
-    },
-    {
-      path: 'dashboard',
-      element: profile ? <DashboardPage /> : <Navigate to="/signin" />,
-      // element: <DashboardPage />,
+      element: profile ? <Root /> : <Navigate to="/signin" replace />,
       children: [
-        { index: true, element: <MainPage /> },
+        { index: true, element: <Navigate to="/dashboard" /> },
+        { path: 'dashboard', element: <DashboardPage /> },
         { path: 'transfers', element: <TransferPage /> },
+        { path: 'new-patient', element: <NewPatientPage /> },
         { path: 'laboratory', element: <LaboratoryPage /> },
         { path: 'radiology', element: <RadiologyPage /> },
         { path: 'units', element: <UnitesPage /> },
