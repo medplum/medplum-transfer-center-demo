@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { Group, Code } from '@mantine/core';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   IconBellRinging,
   IconSettings,
@@ -18,31 +17,29 @@ import classes from './Navbar.module.css';
 
 const menu = [
   { link: '/dashboard', label: 'Dashboard', icon: IconDashboard },
-  { link: 'transfers', label: 'Transfer Center', icon: IconAmbulance },
-  { link: 'laboratory', label: 'Laboratory', icon: IconMicroscope },
-  { link: 'radiology', label: 'Radiology', icon: IconRadioactive },
-  { link: 'notifications', label: 'Notifications', icon: IconBellRinging },
+  { link: '/transfers', label: 'Transfer Center', icon: IconAmbulance },
+  { link: '/laboratory', label: 'Laboratory', icon: IconMicroscope },
+  { link: '/radiology', label: 'Radiology', icon: IconRadioactive },
+  { link: '/notifications', label: 'Notifications', icon: IconBellRinging },
 ];
 
 const adminMenu = [
-  { link: 'locations', label: 'Locations', icon: IconHospital },
-  { link: 'units', label: 'Units', icon: IconBuildingHospital },
-  { link: 'settings', label: 'Settings', icon: IconSettings },
+  { link: '/locations', label: 'Locations', icon: IconHospital },
+  { link: '/units', label: 'Units', icon: IconBuildingHospital },
+  { link: '/settings', label: 'Settings', icon: IconSettings },
 ];
 
 export default function Navbar() {
-  const [active, setActive] = useState('Dashboard');
+  const { pathname } = useLocation();
+  const activeItem =
+    menu.find((item) => pathname.startsWith(item.link)) || adminMenu.find((item) => pathname.startsWith(item.link));
 
   const links = menu.map((item) => (
     <Link
       className={classes.link}
-      data-active={item.label === active || undefined}
+      data-active={item.link === activeItem?.link || undefined}
       to={item.link}
       key={item.label}
-      onClick={() => {
-        // event.preventDefault();
-        setActive(item.label);
-      }}
     >
       <item.icon className={classes.linkIcon} stroke={1.5} />
       <span>{item.label}</span>
@@ -52,13 +49,9 @@ export default function Navbar() {
   const adminLinks = adminMenu.map((item) => (
     <Link
       className={classes.link}
-      data-active={item.label === active || undefined}
+      data-active={item.link === activeItem?.link || undefined}
       to={item.link}
       key={item.label}
-      onClick={() => {
-        // event.preventDefault();
-        setActive(item.label);
-      }}
     >
       <item.icon className={classes.linkIcon} stroke={1.5} />
       <span>{item.label}</span>
