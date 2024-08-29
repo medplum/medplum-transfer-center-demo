@@ -1,41 +1,8 @@
-import { DataTable } from 'mantine-datatable';
-import { Badge, MantineColor } from '@mantine/core';
-import { ReactNode } from 'react';
 import ErrorAlert from '@/components/ErrorAlert';
+import { DataTable } from 'mantine-datatable';
+import { ReactNode } from 'react';
 
-type Status = 'In Progress' | 'Declination' | 'Completed' | 'Pending' | 'Consultation' | string;
-
-const StatusBadge = ({ status }: { status: Status }) => {
-  let color: MantineColor = '';
-
-  switch (status) {
-    case 'In Progress':
-      color = 'blue';
-      break;
-    case 'Declination':
-      color = 'red';
-      break;
-    case 'Completed':
-      color = 'green';
-      break;
-    case 'Higher Level Care':
-      color = 'orange';
-      break;
-    case 'Consultation':
-      color = 'yellow';
-      break;
-    default:
-      color = 'gray';
-  }
-
-  return (
-    <Badge color={color} variant="filled" radius="sm">
-      {status}
-    </Badge>
-  );
-};
-
-type ProjectItem = {
+export type ProjectItem = {
   id: string;
   name: string;
   date: string;

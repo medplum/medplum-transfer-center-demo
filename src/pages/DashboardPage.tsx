@@ -1,142 +1,111 @@
-import { Container, PaperProps, Stack, Title } from '@mantine/core';
-import { Bundle, Location } from '@medplum/fhirtypes';
-import { useMedplum, useSubscription } from '@medplum/react';
-import { useEffect, useMemo, useState } from 'react';
+import { BedStatsWidget } from '@/components/BedStatsWidget/BedStatsWidget';
+import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
+import { StatusBadge } from '@/components/StatusBadge/StatusBadge';
+import { PAPER_PROPS } from '@/lib/common';
+import { ActionIcon, Button, Container, Paper, Stack, Text, Title } from '@mantine/core';
+import { PropertyType, formatDate } from '@medplum/core';
+import { IconRefresh } from '@tabler/icons-react';
+import { useMemo, useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 
-import BedStatsGrid from '@/components/BedStatsGrid';
-import { resolveId } from '@medplum/core';
-
-const PAPER_PROPS: PaperProps = {
-  p: 'md',
-  shadow: 'md',
-  radius: 'md',
-  style: { height: '100%' },
-};
-
-interface ExtendedLocation extends Location {
-  availableBeds: number;
-  numTotalBeds: number;
-  phone: string;
-}
-
-const parentOrgId = 'ba836894-122f-42d0-874b-83ea9557e4f3';
-
-// We pulled this out because it prevents the object from being recreated on every re-render
-// It also makes us hit the fast path for `deepEquals` of object reference equality within the useSubscription hook
-const useSubOpts = {
-  subscriptionProps: {
-    extension: [
-      {
-        url: 'https://medplum.com/fhir/StructureDefinition/subscription-supported-interaction',
-        valueCode: 'update',
-      },
-    ],
-  },
-};
-
-export function DashboardPage(): JSX.Element {
-  const medplum = useMedplum();
-
-  const [locations, setLocations] = useState<ExtendedLocation[]>([]);
-  const [loadingLocations, setLoadingLocations] = useState<boolean>(true);
-  const [locationsError, setLocationsError] = useState<string | null>(null);
-  const [locationDetails, setLocationDetails] = useState<{ [key: string]: Location[] }>({});
-
-  useEffect(() => {
-    async function fetchLocations(): Promise<void> {
-      try {
-        setLoadingLocations(true);
-        const result = await medplum.graphql(`
-        {
-          Location(id: "${parentOrgId}") {
-            id
-            name
-            LocationList(_reference: partof, physical_type: "lvl") {
-              id
-              name
-              telecom(system: "phone") {
-                value
-              }
-              occupiedLocations: LocationList(_reference: partof, physical_type: "ro", operational_status: "O") {
-                id
-              }
-              unoccupiedLocations: LocationList(_reference: partof, physical_type: "ro", operational_status: "U") {
-                id
-              }
+const serviceReqQuery = `{
+  ResourceList: ServiceRequestList(code: "http://snomed.info/sct|19712007", authored: "gt01-01-70", _sort: "-authored") {
+    id,
+    authoredOn,
+    subject {
+      display,
+      reference
+    },
+    requester {
+      display,
+      reference,
+      resource {
+        ... on Practitioner {
+          PractitionerRoleList(_reference: practitioner) {
+            organization {
+              display,
+              reference
             }
           }
         }
-      `);
-
-        const locations = [] as ExtendedLocation[];
-        for (const level of result.data.Location.LocationList) {
-          locations.push({
-            ...level,
-            numTotalBeds: level.occupiedLocations.length + level.unoccupiedLocations.length,
-            availableBeds: level.unoccupiedLocations.length,
-            phone: level.telecom?.[0]?.value,
-          });
-
-          setLocationDetails((prevDetails) => ({
-            ...prevDetails,
-            [String(level.id as string)]: [...level.occupiedLocations, ...level.unoccupiedLocations],
-          }));
-        }
-        setLocations(locations);
-      } catch (error) {
-        setLocationsError('Failed to fetch locations');
-      } finally {
-        setLoadingLocations(false);
       }
     }
-
-    fetchLocations().catch(console.error);
-  }, [medplum]);
-
-  const locationRefStrs = useMemo(() => locations.map((location) => `Location/${location.id as string}`), [locations]);
-  useSubscription(
-    `Location?physical-type=ro&partof=${locationRefStrs.join(',')}`,
-    (bundle: Bundle) => {
-      const updatedLoc = bundle.entry?.[1].resource as Location;
-      let availableDelta = 0;
-      if (updatedLoc.operationalStatus?.code !== 'O') {
-        availableDelta++;
-      } else {
-        availableDelta--;
+    CommunicationRequestList(_reference: based_on) {
+      id,
+      CommunicationList(_reference: based_on) {
+        statusReason {
+          text
+        }
       }
-      const parentId = resolveId(updatedLoc.partOf);
-      // Find parent in list, update in place
-      const parentLoc = locations.find((loc) => loc.id === parentId);
-      if (!parentLoc) {
-        console.error('Could not find a parent with the listed ID');
-        return;
-      }
-      parentLoc.availableBeds += availableDelta;
-      // Set locations with a spread of the current object to get a new reference
-      setLocations([...locations]);
-    },
-    useSubOpts
+    }
+  }
+}`;
+
+export function DashboardPage(): JSX.Element {
+  const navigate = useNavigate();
+  const [, setCount] = useState(0);
+
+  const fields = useMemo<FhirPathTableField[]>(
+    () => [
+      {
+        name: 'Patient',
+        fhirPath: 'subject.display',
+        propertyType: PropertyType.string,
+      },
+      {
+        name: 'Date',
+        fhirPath: 'authoredOn',
+        propertyType: PropertyType.date,
+        render: ({ value }) => (
+          <Text>{formatDate(value, undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</Text>
+        ),
+      },
+      {
+        name: 'Transfer from',
+        fhirPath: 'requester.resource.PractitionerRoleList[0].organization.display',
+        propertyType: PropertyType.string,
+      },
+      {
+        name: 'Transfer doctor',
+        fhirPath: 'requester.display',
+        propertyType: PropertyType.string,
+      },
+      {
+        name: 'State',
+        fhirPath: 'CommunicationRequestList[0].CommunicationList[0].statusReason.text',
+        propertyType: PropertyType.string,
+        render: ({ value }) => <StatusBadge status={value} />,
+      },
+      {
+        name: '',
+        fhirPath: 'id',
+        propertyType: PropertyType.id,
+        render: ({ value }) => <Button onClick={() => navigate(`ServiceRequest/${value as string}`)}>Edit</Button>,
+      },
+    ],
+    [navigate]
   );
-
-  const paperProps = useMemo(() => PAPER_PROPS, []);
-
-  if (loadingLocations) {
-    return <div>Loading...</div>;
-  }
-
-  if (locationsError) {
-    return <div>Error: {locationsError}</div>;
-  }
-
-  // TODO: fix
-  const error = false;
 
   return (
     <Container fluid>
       <Stack gap="lg">
         <Title>Transfer Center</Title>
-        <BedStatsGrid data={locations} locationDetails={locationDetails} error={error} paperProps={paperProps} />
+        <BedStatsWidget />
+        <Paper {...PAPER_PROPS}>
+          <ActionIcon
+            style={{ float: 'right' }}
+            type="submit"
+            size="1.5rem"
+            color="blue"
+            variant="outline"
+            aria-label="Refresh"
+          >
+            <IconRefresh size="1rem" stroke={1.5} />
+          </ActionIcon>
+          <FhirPathTable resourceType="ServiceRequest" query={serviceReqQuery} fields={fields} />
+        </Paper>
       </Stack>
+      <Outlet />
     </Container>
   );
 }

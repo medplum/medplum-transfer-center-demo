@@ -1,8 +1,9 @@
 import { ErrorBoundary, Loading, useMedplum, useMedplumProfile } from '@medplum/react';
 // import { IconUser } from '@tabler/icons-react';
 import { Suspense } from 'react';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 
+import { AssignToRoomPage } from './pages/AssignToRoomPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LaboratoryPage } from './pages/LaboratoryPage';
 import { LocationsPage } from './pages/LocationPage';
@@ -30,7 +31,11 @@ function App(): JSX.Element | null {
       element: profile ? <Root /> : <Navigate to="/signin" replace />,
       children: [
         { index: true, element: <Navigate to="/dashboard" /> },
-        { path: 'dashboard', element: <DashboardPage /> },
+        {
+          path: 'dashboard',
+          element: <DashboardPage />,
+          children: [{ path: 'ServiceRequest/:id', element: <AssignToRoomPage /> }],
+        },
         { path: 'transfers', element: <TransferPage /> },
         { path: 'new-patient', element: <NewPatientPage /> },
         { path: 'laboratory', element: <LaboratoryPage /> },
