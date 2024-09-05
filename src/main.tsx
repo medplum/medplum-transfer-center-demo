@@ -38,12 +38,10 @@ const container = document.getElementById('root') as HTMLDivElement;
 const root = createRoot(container);
 root.render(
   <StrictMode>
-    {/* <BrowserRouter> */}
     <MedplumProvider medplum={medplum}>
       <MantineProvider theme={theme}>
         <App />
       </MantineProvider>
     </MedplumProvider>
-    {/* </BrowserRouter> */}
   </StrictMode>
 );

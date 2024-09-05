@@ -76,6 +76,9 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     statusReason: { coding: [results.callDisposition], text: results.callDisposition.display },
     subject: results.serviceRequest.subject as Reference<Patient>,
     basedOn: [createReference(commReq)],
+    meta: {
+      tag: [results.callDisposition],
+    },
   });
 
   // Create an encounter to track the Patient's location
@@ -90,6 +93,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         status: 'active',
       },
     ],
+    basedOn: [createReference(results.serviceRequest)],
   });
 
   // Mark room as occupied

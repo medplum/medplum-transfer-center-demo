@@ -2,14 +2,17 @@ import { BedStatsWidget } from '@/components/BedStatsWidget/BedStatsWidget';
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
 import { StatusBadge } from '@/components/StatusBadge/StatusBadge';
 import { PAPER_PROPS } from '@/lib/common';
-import { ActionIcon, Button, Container, Paper, Stack, Text, Title } from '@mantine/core';
+import { Button, Container, Paper, Stack, Table, TableTd, TableTh, Text, Title } from '@mantine/core';
 import { PropertyType, formatDate } from '@medplum/core';
-import { IconRefresh } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { Bundle } from '@medplum/fhirtypes';
+import { Loading, useMedplum } from '@medplum/react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 
+const HAYS_CALL_RESULT_SYSTEM_STR = 'https://haysmed.com/fhir/CodeSystem/call-dispositions';
+
 const serviceReqQuery = `{
-  ResourceList: ServiceRequestList(code: "http://snomed.info/sct|19712007", authored: "gt01-01-70", _sort: "-authored") {
+  ResourceList: ServiceRequestList(code: "http://snomed.info/sct|19712007", authored: "gt01-01-70", _sort: "-authored", _count: 4) {
     id,
     authoredOn,
     subject {
@@ -41,9 +44,56 @@ const serviceReqQuery = `{
   }
 }`;
 
+const RESULT_CODES = ['COMPLETE', 'DECLINED', 'HLOC', 'CANCELLED', 'CONSULT'] as const;
+type ResultCode = (typeof RESULT_CODES)[number];
+
+type ResultCodeCountDisplayProps = {
+  code: ResultCode;
+};
+
+function ResultCodeCountDisplay(props: ResultCodeCountDisplayProps): JSX.Element {
+  const medplum = useMedplum();
+  const [count, setCount] = useState<number>();
+
+  useEffect(() => {
+    medplum
+      .search(
+        'ServiceRequest',
+        `_has:CommunicationRequest:based-on:_has:Communication:based-on:_tag=${HAYS_CALL_RESULT_SYSTEM_STR}|${props.code}&_summary=count`
+      )
+      .then((bundle: Bundle) => {
+        console.log(bundle);
+        setCount(bundle.total);
+      })
+      .catch(console.error);
+  }, [medplum, props.code]);
+
+  if (count === undefined) {
+    return <Loading />;
+  }
+
+  return <p>{count}</p>;
+}
+
+function getCodeDisplayString(code: ResultCode): string {
+  switch (code) {
+    case 'COMPLETE':
+      return 'Completed';
+    case 'CONSULT':
+      return 'Consultation';
+    case 'HLOC':
+      return 'Higher Level of Care';
+    case 'CANCELLED':
+      return 'Cancellation';
+    case 'DECLINED':
+      return 'Declination';
+    default:
+      return 'Invalid code';
+  }
+}
+
 export function DashboardPage(): JSX.Element {
   const navigate = useNavigate();
-  const [, setCount] = useState(0);
 
   const fields = useMemo<FhirPathTableField[]>(
     () => [
@@ -74,7 +124,7 @@ export function DashboardPage(): JSX.Element {
         name: 'State',
         fhirPath: 'CommunicationRequestList[0].CommunicationList[0].statusReason.text',
         propertyType: PropertyType.string,
-        render: ({ value }) => <StatusBadge status={value} />,
+        render: ({ value }) => <StatusBadge status={value ?? 'In Progress'} />,
       },
       {
         name: '',
@@ -92,17 +142,28 @@ export function DashboardPage(): JSX.Element {
         <Title>Transfer Center</Title>
         <BedStatsWidget />
         <Paper {...PAPER_PROPS}>
-          <ActionIcon
-            style={{ float: 'right' }}
-            type="submit"
-            size="1.5rem"
-            color="blue"
-            variant="outline"
-            aria-label="Refresh"
-          >
-            <IconRefresh size="1rem" stroke={1.5} />
-          </ActionIcon>
           <FhirPathTable resourceType="ServiceRequest" query={serviceReqQuery} fields={fields} />
+        </Paper>
+        <Paper {...PAPER_PROPS}>
+          <Stack>
+            <Title>Transfer Resolutions - MTD (September 2024)</Title>
+            <Table>
+              <Table.Tr>
+                {RESULT_CODES.map((code) => {
+                  return <TableTh key={code}>{getCodeDisplayString(code)}</TableTh>;
+                })}
+              </Table.Tr>
+              <Table.Tr>
+                {RESULT_CODES.map((code) => {
+                  return (
+                    <TableTd key={code}>
+                      <ResultCodeCountDisplay code={code} />
+                    </TableTd>
+                  );
+                })}
+              </Table.Tr>
+            </Table>
+          </Stack>
         </Paper>
       </Stack>
       <Outlet />

@@ -14,14 +14,15 @@ export interface FhirPathTableField<T = any> {
   readonly render?: (props: FhirPathDisplayRenderProps<T>) => JSX.Element;
 }
 
-export interface FhirPathTableProps {
-  readonly resourceType: string;
+export interface FhirPathTableProps<T extends Resource = Resource> {
+  readonly resourceType: T['resourceType'];
   readonly query: string;
   readonly fields: FhirPathTableField[];
   readonly checkboxesEnabled?: boolean;
   readonly onClick?: (e: SearchClickEvent) => void;
   readonly onAuxClick?: (e: SearchClickEvent) => void;
   readonly onBulk?: (ids: string[]) => void;
+  readonly searchType?: 'graphql' | 'fhirSearch';
 }
 
 export interface SmartSearchResponse {
@@ -35,11 +36,11 @@ export interface SmartSearchResponse {
  * @param props - FhirPathTable React props.
  * @returns FhirPathTable React node.
  */
-export function FhirPathTable(props: FhirPathTableProps): JSX.Element {
+export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTableProps<T>): JSX.Element {
   const medplum = useMedplum();
   const [schemaLoaded, setSchemaLoaded] = useState(false);
   const [outcome, setOutcome] = useState<OperationOutcome | undefined>();
-  const { query, fields } = props;
+  const { resourceType, query, fields, searchType } = props;
   const [response, setResponse] = useState<SmartSearchResponse | undefined>();
   const [selected, setSelected] = useState<{ [id: string]: boolean }>({});
 
@@ -51,11 +52,22 @@ export function FhirPathTable(props: FhirPathTableProps): JSX.Element {
 
   useEffect(() => {
     setOutcome(undefined);
-    medplum
-      .graphql(query)
-      .then(setResponse)
-      .catch((err) => setOutcome(normalizeOperationOutcome(err)));
-  }, [medplum, query]);
+
+    if (searchType === 'fhirSearch') {
+      medplum
+        .searchResources(resourceType, query)
+        // @ts-expect-error This should be correct
+        .then((resources: T[]) => {
+          setResponse({ data: { ResourceList: resources } });
+        })
+        .catch((err) => setOutcome(normalizeOperationOutcome(err)));
+    } else {
+      medplum
+        .graphql(query)
+        .then(setResponse)
+        .catch((err) => setOutcome(normalizeOperationOutcome(err)));
+    }
+  }, [medplum, query, searchType, resourceType]);
 
   function handleSingleCheckboxClick(e: ChangeEvent, id: string): void {
     e.stopPropagation();

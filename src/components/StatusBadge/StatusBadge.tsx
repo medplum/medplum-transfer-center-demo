@@ -1,21 +1,19 @@
 import { Badge, MantineColor } from '@mantine/core';
 
-// type Status = 'In Progress' | 'Declination' | 'Completed' | 'Pending' | 'Consultation' | string | undefined;
 type Status =
   | 'Completed Transfer'
   | 'Consultation'
   | 'Higher Level of Care'
   | 'Declination'
   | 'Cancellation'
-  | undefined;
+  | 'In Progress';
 
-export const StatusBadge = ({ status }: { status: Status }) => {
+type StatusBadgeProps = { status: Status | undefined };
+
+export const StatusBadge = ({ status }: StatusBadgeProps) => {
   let color: MantineColor = '';
 
   switch (status) {
-    // case 'In Progress':
-    //   color = 'blue';
-    //   break;
     case 'Completed Transfer':
       color = 'green';
       break;
@@ -26,10 +24,11 @@ export const StatusBadge = ({ status }: { status: Status }) => {
       color = 'orange';
       break;
     case 'Declination':
-      color = 'red';
-      break;
     case 'Cancellation':
       color = 'red';
+      break;
+    case 'In Progress':
+      color = 'blue';
       break;
     default:
       color = 'gray';
