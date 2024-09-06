@@ -92,9 +92,6 @@ const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) =
           <Text fz="xs" c="dimmed" mt={7}>
             ext: {phone}
           </Text>
-          <Text fz="xs" c="dimmed" mt={2}>
-            {id}
-          </Text>
         </Group>
       </Surface>
       <Modal opened={opened} onClose={() => setOpened(false)} title={name}>

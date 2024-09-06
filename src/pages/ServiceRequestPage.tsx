@@ -1,0 +1,73 @@
+import { Grid, GridCol, Loader } from '@mantine/core';
+import { showNotification } from '@mantine/notifications';
+import { normalizeErrorString, resolveId } from '@medplum/core';
+import { Patient, ServiceRequest } from '@medplum/fhirtypes';
+import { PatientSummary, useMedplum } from '@medplum/react';
+import { IconCircleOff } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { ServiceRequestDetails } from '../components/PatientDetails/PatientDetails';
+
+export function ServiceRequestPage(): JSX.Element {
+  const medplum = useMedplum();
+  const { id } = useParams() as { id: string };
+  const [serviceRequest, setServiceRequest] = useState<ServiceRequest | undefined>();
+  const [patient, setPatient] = useState<Patient>();
+
+  useEffect(() => {
+    medplum
+      .readResource('ServiceRequest', id)
+      .then(setServiceRequest)
+      .catch((err) => {
+        showNotification({
+          icon: <IconCircleOff />,
+          title: 'Error',
+          message: normalizeErrorString(err),
+        });
+      });
+  }, [id, medplum]);
+
+  useEffect(() => {
+    if (!serviceRequest) {
+      return;
+    }
+    if (!serviceRequest.subject) {
+      showNotification({
+        color: 'red',
+        message: 'Invalid service request. Patient is missing from subject field',
+        autoClose: false,
+      });
+      return;
+    }
+    const patientId = resolveId(serviceRequest.subject);
+    if (!patientId) {
+      showNotification({ color: 'red', message: 'Invalid reference for patient in service request', autoClose: false });
+      return;
+    }
+    medplum
+      .readResource('Patient', patientId)
+      .then(setPatient)
+      .catch((err) => {
+        showNotification({
+          icon: <IconCircleOff />,
+          title: 'Error',
+          message: normalizeErrorString(err),
+        });
+      });
+  }, [serviceRequest, medplum]);
+
+  if (!patient) {
+    return <Loader />;
+  }
+
+  return (
+    <Grid>
+      <GridCol span={4}>
+        <PatientSummary patient={patient} />
+      </GridCol>
+      <GridCol span={8}>
+        <ServiceRequestDetails patient={patient} onChange={setServiceRequest} />
+      </GridCol>
+    </Grid>
+  );
+}

@@ -1,16 +1,6 @@
-import { Group, Code } from '@mantine/core';
+import { Code, Group } from '@mantine/core';
+import { IconAmbulance, IconDashboard, IconLogout, IconStethoscope } from '@tabler/icons-react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  IconBellRinging,
-  IconSettings,
-  IconDashboard,
-  IconLogout,
-  IconAmbulance,
-  IconBuildingHospital,
-  IconHospital,
-  IconRadioactive,
-  IconMicroscope,
-} from '@tabler/icons-react';
 
 import { Text } from '@mantine/core';
 import classes from './Navbar.module.css';
@@ -18,15 +8,16 @@ import classes from './Navbar.module.css';
 const menu = [
   { link: '/dashboard', label: 'Dashboard', icon: IconDashboard },
   { link: '/transfers', label: 'Transfer Center', icon: IconAmbulance },
-  { link: '/laboratory', label: 'Laboratory', icon: IconMicroscope },
-  { link: '/radiology', label: 'Radiology', icon: IconRadioactive },
-  { link: '/notifications', label: 'Notifications', icon: IconBellRinging },
+  // { link: '/laboratory', label: 'Laboratory', icon: IconMicroscope },
+  // { link: '/radiology', label: 'Radiology', icon: IconRadioactive },
+  // { link: '/notifications', label: 'Notifications', icon: IconBellRinging },
 ];
 
 const adminMenu = [
-  { link: '/locations', label: 'Locations', icon: IconHospital },
-  { link: '/units', label: 'Units', icon: IconBuildingHospital },
-  { link: '/settings', label: 'Settings', icon: IconSettings },
+  { link: '/physicians', label: 'Physicians', icon: IconStethoscope },
+  // { link: '/locations', label: 'Locations', icon: IconHospital },
+  // { link: '/units', label: 'Units', icon: IconBuildingHospital },
+  // { link: '/settings', label: 'Settings', icon: IconSettings },
 ];
 
 export default function Navbar() {
