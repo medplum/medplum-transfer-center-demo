@@ -1,6 +1,6 @@
 import classes from '@/components/BedStatsCard/BedStatsCard.module.css';
 import Surface from '@/components/Surface';
-import { Badge, Button, Group, Modal, Paper, PaperProps, Table, Text } from '@mantine/core';
+import { ActionIcon, Badge, Button, Group, Modal, Paper, PaperProps, Table, Text } from '@mantine/core';
 import { Location } from '@medplum/fhirtypes';
 import {
   IconArrowDownRight,
@@ -14,14 +14,8 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 
-interface ExtendedLocation extends Location {
-  availableBeds: number;
-  numTotalBeds: number;
-  phone: string;
-}
-
 type BedStatsCardProps = {
-  data: ExtendedLocation;
+  data: Location;
   // data: { id: number; name: string; phone: string; numBeds: number; numTotalBeds: number };
   locationDetails: { [key: string]: Location[] };
 } & PaperProps;
@@ -37,45 +31,36 @@ const icons = {
 
 const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) => {
   const [opened, setOpened] = useState(false);
-  const { id, name, phone, availableBeds, numTotalBeds } = data;
+  const { id, name } = data;
+
+  let sortedDetails: Location[] = [];
+  if (id !== undefined) {
+    sortedDetails = locationDetails[id]?.slice().sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')) ?? [];
+  }
+
+  const availableBeds = sortedDetails.reduce((prevVal, currentVal) => {
+    return prevVal + (currentVal?.operationalStatus?.code !== 'O' ? 1 : 0);
+  }, 0);
+  const numTotalBeds = sortedDetails.length;
 
   // TODO:  Fix hard coded value for diff, ext, and icon
   const diff = Math.round((availableBeds / numTotalBeds) * 100);
   const icon = 'bed';
   const DiffIcon = diff > 0 ? IconArrowUpRight : IconArrowDownRight;
   const Icon = icons[icon];
-  // const random = 'xzy';
-
-  let sortedDetails: Location[] = [];
-
-  if (id !== undefined) {
-    sortedDetails = locationDetails[id]?.slice().sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
-  } else {
-    sortedDetails = [];
-  }
-
-  //TODO: Fix value is the number of beds, need to look this up in medplum for each location
-  // const value = '10';
 
   return (
     <>
       <Surface component={Paper} {...others}>
         <Group justify="space-between">
-          {/* <Text size="xs" c="dimmed" className={classes.title}>
-          {name}
-        </Text> */}
           {name && (
             <Badge variant="filled" radius="sm">
               {name}
             </Badge>
           )}
-          {/* {random && (
-          <Badge variant="filled" radius="sm" color="red">
-            {random}
-          </Badge>
-        )} */}
-          {/* <Icon className={classes.icon} size="1.4rem" stroke={1.5} /> */}
-          <Icon className={classes.icon} size="1.4rem" stroke={1.5} onClick={() => setOpened(true)} />
+          <ActionIcon variant="outline" onClick={() => setOpened(true)} title="See rooms">
+            <Icon className={classes.icon} size="1.4rem" stroke={1.5} />
+          </ActionIcon>
         </Group>
 
         <Group align="flex-end" gap="xs" mt={15}>
@@ -90,34 +75,34 @@ const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) =
 
         <Group align="flex-end" gap="xs" mt={5} color="red">
           <Text fz="xs" c="dimmed" mt={7}>
-            ext: {phone}
+            ext: {data.telecom?.find((val) => val.system === 'phone')?.value ?? 'Unknown'}
           </Text>
         </Group>
       </Surface>
       <Modal opened={opened} onClose={() => setOpened(false)} title={name}>
-        <div>
-          {sortedDetails ? (
-            <Table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedDetails.map((detail: Location, index: number) => (
-                  <tr key={index}>
-                    <td>{detail.name}</td>
-                    <td>{detail.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          ) : (
-            <p>No details available.</p>
-          )}
-          <Button onClick={() => setOpened(false)}>OK</Button>
-        </div>
+        {sortedDetails ? (
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Description</Table.Th>
+                <Table.Th>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {sortedDetails.map((detail: Location) => (
+                <Table.Tr key={detail.name}>
+                  <Table.Td>{detail.name}</Table.Td>
+                  <Table.Td>{detail.description}</Table.Td>
+                  <Table.Td>{detail.operationalStatus?.display ?? 'Unknown'}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        ) : (
+          <p>No details available.</p>
+        )}
+        <Button onClick={() => setOpened(false)}>OK</Button>
       </Modal>
     </>
   );

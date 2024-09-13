@@ -4,14 +4,8 @@ import ErrorAlert from '@/components/ErrorAlert';
 import { PaperProps, SimpleGrid, Skeleton } from '@mantine/core';
 import { Location } from '@medplum/fhirtypes';
 
-interface ExtendedLocation extends Location {
-  availableBeds: number;
-  numTotalBeds: number;
-  phone: string;
-}
-
 type LocationProps = {
-  data?: ExtendedLocation[];
+  data?: Location[];
   locationDetails: { [key: string]: Location[] };
   error?: boolean | null;
   paperProps?: PaperProps;

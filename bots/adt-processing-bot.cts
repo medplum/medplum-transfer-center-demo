@@ -19,11 +19,15 @@ export async function handler(medplum: MedplumClient, event: BotEvent): Promise<
     return input.buildAck();
   }
 
+  // Parse ward from PV1.3.1
+  const level = input.getSegment('PV1')?.getField(3).getComponent(1);
   // Parse room from PV1.3.2
   const roomNo = input.getSegment('PV1')?.getField(3).getComponent(2);
 
-  // Find corresponding room in project
-  const roomLocation = await medplum.searchOne('Location', `name=${roomNo}`);
+  const query = level ? `name=${level} ${roomNo}` : `name=${roomNo}`;
+
+  // Find corresponding room in project'
+  const roomLocation = await medplum.searchOne('Location', query);
   if (!roomLocation) {
     throw new Error(`Could not find room ${roomNo}`);
   }
