@@ -23,7 +23,7 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts"]
+  "include": ["src", "scripts", "bots"]
   // Remove the reference to tsconfig.node.json
   // "references": [{ "path": "./tsconfig.node.json" }]
 }

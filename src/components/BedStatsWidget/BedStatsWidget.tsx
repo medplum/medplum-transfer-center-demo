@@ -26,11 +26,16 @@ export function BedStatsWidget(): JSX.Element {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loadingLocations, setLoadingLocations] = useState<boolean>(true);
   const [locationsError, setLocationsError] = useState<string>();
+  const [reconnecting, setReconnecting] = useState(false);
 
-  const fetchLocations = useCallback(async (): Promise<void> => {
-    try {
-      setLoadingLocations(true);
-      const result = await medplum.graphql(`
+  const fetchLocations = useCallback(
+    async (shouldSetLoading = false): Promise<void> => {
+      try {
+        if (shouldSetLoading) {
+          setLoadingLocations(true);
+        }
+        const result = await medplum.graphql(
+          `
       {
         Location(id: "${parentOrgId}") {
           id
@@ -63,22 +68,28 @@ export function BedStatsWidget(): JSX.Element {
           }
         }
       }
-    `);
+    `,
+          undefined,
+          undefined,
+          { cache: 'reload' }
+        );
 
-      const locations = [] as Location[];
-      for (const level of result.data.Location.LocationList) {
-        locations.push({ ...level });
+        const locations = [] as Location[];
+        for (const level of result.data.Location.LocationList) {
+          locations.push({ ...level });
+        }
+        setLocations(locations);
+      } catch (error) {
+        setLocationsError('Failed to fetch locations');
+      } finally {
+        setLoadingLocations(false);
       }
-      setLocations(locations);
-    } catch (error) {
-      setLocationsError('Failed to fetch locations');
-    } finally {
-      setLoadingLocations(false);
-    }
-  }, [medplum]);
+    },
+    [medplum]
+  );
 
   useEffect(() => {
-    fetchLocations().catch(console.error);
+    fetchLocations(true).catch(console.error);
   }, [fetchLocations]);
 
   const locationDetails = useMemo<Record<string, Location[]>>(() => {
@@ -91,12 +102,17 @@ export function BedStatsWidget(): JSX.Element {
     }
     return details;
   }, [locations]);
-  const locationRefStrs = useMemo(() => locations.map((location) => `Location/${location.id as string}`), [locations]);
+
+  const locationsRefStr = useMemo(
+    () => locations.map((location) => `Location/${location.id as string}`).join(','),
+    [locations]
+  );
 
   useSubscription(
-    `Location?physical-type=ro&partof=${locationRefStrs.join(',')}`,
+    locationsRefStr ? `Location?physical-type=ro&partof=${locationsRefStr}` : undefined,
     (bundle: Bundle) => {
       const updatedLoc = bundle.entry?.[1]?.resource as Location;
+      console.log({ updatedLoc });
       if (!updatedLoc) {
         return;
       }
