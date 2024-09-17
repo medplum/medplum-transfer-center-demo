@@ -69,6 +69,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent): Promise<
     // case 'A04':
     // case 'A05':
     case 'A03': {
+      console.info(input.toString());
       // "The patient’s location prior to discharge should be entered in PV1-3 - Assigned Patient Location."
       // Source: https://hl7-definition.caristix.com/v2/HL7v2.5/TriggerEvents/ADT_A03#:~:text=The%20patient%E2%80%99s%20location%20prior%20to%20discharge%20should%20be%20entered%20in%20PV1%2D3%20%2D%20Assigned%20Patient%20Location.
 
