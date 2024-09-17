@@ -111,7 +111,6 @@ export function BedStatsWidget(): JSX.Element {
     locationsRefStr ? `Location?physical-type=ro&partof=${locationsRefStr}` : undefined,
     (bundle: Bundle) => {
       const updatedLoc = bundle.entry?.[1]?.resource as Location;
-      console.log({ updatedLoc });
       if (!updatedLoc) {
         return;
       }
