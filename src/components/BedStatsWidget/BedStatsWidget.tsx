@@ -26,7 +26,6 @@ export function BedStatsWidget(): JSX.Element {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loadingLocations, setLoadingLocations] = useState<boolean>(true);
   const [locationsError, setLocationsError] = useState<string>();
-  const [reconnecting, setReconnecting] = useState(false);
 
   const fetchLocations = useCallback(
     async (shouldSetLoading = false): Promise<void> => {
