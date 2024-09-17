@@ -1,6 +1,6 @@
 import classes from '@/components/BedStatsCard/BedStatsCard.module.css';
 import Surface from '@/components/Surface';
-import { ActionIcon, Badge, Button, Group, Modal, Paper, PaperProps, Table, Text } from '@mantine/core';
+import { ActionIcon, Badge, Button, Group, Modal, Paper, PaperProps, ScrollArea, Table, Text } from '@mantine/core';
 import { Location } from '@medplum/fhirtypes';
 import {
   IconArrowDownRight,
@@ -80,28 +80,35 @@ const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) =
         </Group>
       </Surface>
       <Modal opened={opened} onClose={() => setOpened(false)} title={name}>
-        {sortedDetails ? (
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Description</Table.Th>
-                <Table.Th>Status</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {sortedDetails.map((detail: Location) => (
-                <Table.Tr key={detail.name}>
-                  <Table.Td>{detail.name}</Table.Td>
-                  <Table.Td>{detail.description}</Table.Td>
-                  <Table.Td>{detail.operationalStatus?.display ?? 'Unknown'}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        ) : (
-          <p>No details available.</p>
-        )}
+        <div className={classes.tableOuterWrapper}>
+          <ScrollArea h={200}>
+            <div className={classes.tableInnerWrapper}>
+              {sortedDetails ? (
+                <Table>
+                  <Table.Thead className={classes.tableHeader}>
+                    <Table.Tr>
+                      <Table.Th>Name</Table.Th>
+                      <Table.Th>Description</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {sortedDetails.map((detail: Location) => (
+                      <Table.Tr key={detail.name}>
+                        <Table.Td>{detail.name}</Table.Td>
+                        <Table.Td>{detail.description}</Table.Td>
+                        <Table.Td>{detail.operationalStatus?.display ?? 'Unknown'}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              ) : (
+                <p>No details available.</p>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
         <Button onClick={() => setOpened(false)}>OK</Button>
       </Modal>
     </>
