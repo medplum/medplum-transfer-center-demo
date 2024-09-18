@@ -3,6 +3,7 @@ import { BotEvent, Hl7Message, MedplumClient, resolveId } from '@medplum/core';
 const LEVEL_TRANSFORMS = {
   CPCU: 'PCU',
   ER: 'ED',
+  IPREH: 'IPREHAB',
 } as Record<string, string>;
 
 const ROOM_TRANSFORMS = {
