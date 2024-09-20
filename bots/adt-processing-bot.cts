@@ -1,11 +1,17 @@
 import { BotEvent, Hl7Message, MedplumClient, resolveId } from '@medplum/core';
 
+// These transforms normalize the Point of Care field (PV1.3.1/PV1.6.1 from ADTs) correlated to the "level" of the hospital
+// We only have one actual "name" that we use in the Location resources in Medplum
+// So we essentially map the forms that can appear in ADTs to the one we use in order to reduce noise when comparing Locations
 const LEVEL_TRANSFORMS = {
   CPCU: 'PCU',
   ER: 'ED',
   IPREH: 'IPREHAB',
 } as Record<string, string>;
 
+// These transforms clean up the room field (PV1.3.2/PV1.6.2)
+// Most of these are just removing characters that may or may not be included as part of the room
+// Some are prefixes and some are suffixes and we really only care about the room numbers
 const ROOM_TRANSFORMS = {
   '3SURG': (roomNo: string) => roomNo.replaceAll('B', ''),
   ACUTE: (roomNo: string) => roomNo.replaceAll('A', ''),
@@ -17,9 +23,9 @@ const ROOM_TRANSFORMS = {
 const RELEVANT_LEVELS = ['PCU', '3SURG', 'OBGYN', 'IPREHAB', 'ACUTE', 'MPCU', 'MSICU', 'ED'] as const;
 type RelevantLevel = (typeof RELEVANT_LEVELS)[number];
 const ACCEPTED_ADTS = [
-  'A01', // Admit/visit notification
-  'A03', // Discharge a patient
-  'A08'  // Update patient information
+  'A01', // Admit/visit notification. See: https://hl7-definition.caristix.com/v2/HL7v2.3/TriggerEvents/ADT_A01
+  'A03', // Discharge/end visit. See: https://hl7-definition.caristix.com/v2/HL7v2.3/TriggerEvents/ADT_A03
+  'A08', // Update patient information. See: https://hl7-definition.caristix.com/v2/HL7v2.3/TriggerEvents/ADT_A08
 ] as const;
 type AcceptedAdt = (typeof ACCEPTED_ADTS)[number];
 
@@ -42,62 +48,102 @@ export async function handler(medplum: MedplumClient, event: BotEvent): Promise<
 
   switch (messageSubtype) {
     case 'A01': {
-      // Current location = occupied
-      const currLocName = getCurrentLocation(input);
-      if (!currLocName) {
-        console.error('No valid location found in segment PV1.3');
-        return input.buildAck();
-      }
-
-      // Do query for location
-      const currentLocation = await medplum.searchOne('Location', `name=${currLocName}`);
-      if (!currentLocation) {
-        console.error(`Could not find room with name '${currLocName}'`);
-        return input.buildAck();
-      }
-
-      // Check if the currentLocation is already occupied
-      // If so, don't do anything
-      if (currentLocation.operationalStatus?.code !== 'O') {
-        // Mark room as occupied
-        await medplum.patchResource('Location', resolveId(currentLocation) as string, [
-          {
-            op: 'replace',
-            path: '/operationalStatus',
-            value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
-          },
-        ]);
-      }
-      return input.buildAck();
+      return handlePatientAdmit(medplum, input);
     }
     // TODO: We could use these to upsert patient before they are admitted
     // case 'A04':
     // case 'A05':
     case 'A03': {
       console.info(input.toString());
-      // "The patient’s location prior to discharge should be entered in PV1-3 - Assigned Patient Location."
-      // Source: https://hl7-definition.caristix.com/v2/HL7v2.5/TriggerEvents/ADT_A03#:~:text=The%20patient%E2%80%99s%20location%20prior%20to%20discharge%20should%20be%20entered%20in%20PV1%2D3%20%2D%20Assigned%20Patient%20Location.
+      return handlePatientDischarge(medplum, input);
+    }
+    case 'A08': {
+      return handlePatientUpdate(medplum, input);
+    }
+  }
+}
 
-      // Check CURRENT LOCATION
-      // SET CURRENT LOCATION AS UNOCCUPIED
-      const currLocName = getCurrentLocation(input);
-      if (!currLocName) {
-        console.error('No valid location found in segment PV1.3');
-        return input.buildAck();
-      }
+async function handlePatientAdmit(medplum: MedplumClient, msg: Hl7Message): Promise<Hl7Message> {
+  // Current location = occupied
+  const currLocName = getCurrentLocation(msg);
+  if (!currLocName) {
+    console.error('No valid location found in segment PV1.3');
+    return msg.buildAck();
+  }
 
-      // Do query for location
-      const currentLocation = await medplum.searchOne('Location', `name=${currLocName}`);
-      if (!currentLocation) {
-        console.error(`Could not find room with name '${currLocName}'`);
-        return input.buildAck();
-      }
+  // Do query for location
+  const currentLocation = await medplum.searchOne('Location', `name=${currLocName}`);
+  if (!currentLocation) {
+    console.error(`Could not find room with name '${currLocName}'`);
+    return msg.buildAck();
+  }
 
+  // Check if the currentLocation is already occupied
+  // If so, don't do anything
+  if (currentLocation.operationalStatus?.code !== 'O') {
+    // Mark room as occupied
+    await medplum.patchResource('Location', resolveId(currentLocation) as string, [
+      {
+        op: 'replace',
+        path: '/operationalStatus',
+        value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
+      },
+    ]);
+  }
+  return msg.buildAck();
+}
+
+async function handlePatientDischarge(medplum: MedplumClient, msg: Hl7Message): Promise<Hl7Message> {
+  // "The patient’s location prior to discharge should be entered in PV1-3 - Assigned Patient Location."
+  // Source: https://hl7-definition.caristix.com/v2/HL7v2.5/TriggerEvents/ADT_A03#:~:text=The%20patient%E2%80%99s%20location%20prior%20to%20discharge%20should%20be%20entered%20in%20PV1%2D3%20%2D%20Assigned%20Patient%20Location.
+
+  // Check CURRENT LOCATION
+  // SET CURRENT LOCATION AS UNOCCUPIED
+  const currLocName = getCurrentLocation(msg);
+  if (!currLocName) {
+    console.error('No valid location found in segment PV1.3');
+    return msg.buildAck();
+  }
+
+  // Do query for location
+  const currentLocation = await medplum.searchOne('Location', `name=${currLocName}`);
+  if (!currentLocation) {
+    console.error(`Could not find room with name '${currLocName}'`);
+    return msg.buildAck();
+  }
+
+  // Check if the currentLocation is already occupied
+  // If so, don't do anything
+  if (currentLocation.operationalStatus?.code !== 'U') {
+    // Mark room as occupied
+    await medplum.patchResource('Location', resolveId(currentLocation) as string, [
+      {
+        op: 'replace',
+        path: '/operationalStatus',
+        value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'U', display: 'Unoccupied' },
+      },
+    ]);
+  }
+  return msg.buildAck();
+}
+
+async function handlePatientUpdate(medplum: MedplumClient, msg: Hl7Message): Promise<Hl7Message> {
+  // IF PREV LOCATION && PREV LOCATION !== NEW LOCATION
+  // SET PREV LOCATION AS UNOCCUPIED
+  // SET NEW LOCATION AS OCCUPIED
+  // Update the operationalStatus of the room
+  const currLocName = getCurrentLocation(msg);
+  const prevLocName = getPreviousLocation(msg);
+
+  if (prevLocName && prevLocName !== currLocName) {
+    // Do query for location
+    const previousLocation = await medplum.searchOne('Location', `name=${prevLocName}`);
+    if (previousLocation) {
       // Check if the currentLocation is already occupied
       // If so, don't do anything
-      if (currentLocation.operationalStatus?.code !== 'U') {
+      if (previousLocation.operationalStatus?.code !== 'U') {
         // Mark room as occupied
-        await medplum.patchResource('Location', resolveId(currentLocation) as string, [
+        await medplum.patchResource('Location', resolveId(previousLocation) as string, [
           {
             op: 'replace',
             path: '/operationalStatus',
@@ -105,62 +151,34 @@ export async function handler(medplum: MedplumClient, event: BotEvent): Promise<
           },
         ]);
       }
-      return input.buildAck();
-    }
-    case 'A08': {
-      // IF PREV LOCATION && PREV LOCATION !== NEW LOCATION
-      // SET PREV LOCATION AS UNOCCUPIED
-      // SET NEW LOCATION AS OCCUPIED
-      // Update the operationalStatus of the room
-      const currLocName = getCurrentLocation(input);
-      const prevLocName = getPreviousLocation(input);
-
-      if (prevLocName && prevLocName !== currLocName) {
-        // Do query for location
-        const previousLocation = await medplum.searchOne('Location', `name=${prevLocName}`);
-        if (previousLocation) {
-          // Check if the currentLocation is already occupied
-          // If so, don't do anything
-          if (previousLocation.operationalStatus?.code !== 'U') {
-            // Mark room as occupied
-            await medplum.patchResource('Location', resolveId(previousLocation) as string, [
-              {
-                op: 'replace',
-                path: '/operationalStatus',
-                value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'U', display: 'Unoccupied' },
-              },
-            ]);
-          }
-        } else {
-          console.error(`Could not find room with name '${prevLocName}'`);
-        }
-      }
-
-      if (currLocName) {
-        // Do query for location
-        const currentLocation = await medplum.searchOne('Location', `name=${currLocName}`);
-        if (!currentLocation) {
-          console.error(`Could not find room with name '${currLocName}'`);
-          return input.buildAck();
-        }
-
-        // Check if the currentLocation is already occupied
-        // If so, don't do anything
-        if (currentLocation.operationalStatus?.code !== 'O') {
-          // Mark room as occupied
-          await medplum.patchResource('Location', resolveId(currentLocation) as string, [
-            {
-              op: 'replace',
-              path: '/operationalStatus',
-              value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
-            },
-          ]);
-        }
-      }
-
-      return input.buildAck();
+    } else {
+      console.error(`Could not find room with name '${prevLocName}'`);
     }
   }
+
+  if (currLocName) {
+    // Do query for location
+    const currentLocation = await medplum.searchOne('Location', `name=${currLocName}`);
+    if (!currentLocation) {
+      console.error(`Could not find room with name '${currLocName}'`);
+      return msg.buildAck();
+    }
+
+    // Check if the currentLocation is already occupied
+    // If so, don't do anything
+    if (currentLocation.operationalStatus?.code !== 'O') {
+      // Mark room as occupied
+      await medplum.patchResource('Location', resolveId(currentLocation) as string, [
+        {
+          op: 'replace',
+          path: '/operationalStatus',
+          value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
+        },
+      ]);
+    }
+  }
+
+  return msg.buildAck();
 }
 
 /**

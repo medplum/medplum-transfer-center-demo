@@ -81,7 +81,7 @@ const BedStatsCard = ({ data, locationDetails, ...others }: BedStatsCardProps) =
       </Surface>
       <Modal opened={opened} onClose={() => setOpened(false)} title={name}>
         <div className={classes.tableOuterWrapper}>
-          <ScrollArea h={200}>
+          <ScrollArea h={400}>
             <div className={classes.tableInnerWrapper}>
               {sortedDetails ? (
                 <Table>
