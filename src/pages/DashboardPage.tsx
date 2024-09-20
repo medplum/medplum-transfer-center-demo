@@ -62,7 +62,6 @@ function ResultCodeCountDisplay(props: ResultCodeCountDisplayProps): JSX.Element
         `_has:CommunicationRequest:based-on:_has:Communication:based-on:_tag=${HAYS_CALL_RESULT_SYSTEM_STR}|${props.code}&_summary=count`
       )
       .then((bundle: Bundle) => {
-        console.log(bundle);
         setCount(bundle.total);
       })
       .catch(console.error);
@@ -148,20 +147,22 @@ export function DashboardPage(): JSX.Element {
           <Stack>
             <Title>Transfer Resolutions - MTD (September 2024)</Title>
             <Table>
-              <Table.Tr>
-                {RESULT_CODES.map((code) => {
-                  return <TableTh key={code}>{getCodeDisplayString(code)}</TableTh>;
-                })}
-              </Table.Tr>
-              <Table.Tr>
-                {RESULT_CODES.map((code) => {
-                  return (
-                    <TableTd key={code}>
-                      <ResultCodeCountDisplay code={code} />
-                    </TableTd>
-                  );
-                })}
-              </Table.Tr>
+              <Table.Tbody>
+                <Table.Tr>
+                  {RESULT_CODES.map((code) => {
+                    return <TableTh key={code}>{getCodeDisplayString(code)}</TableTh>;
+                  })}
+                </Table.Tr>
+                <Table.Tr>
+                  {RESULT_CODES.map((code) => {
+                    return (
+                      <TableTd key={code}>
+                        <ResultCodeCountDisplay code={code} />
+                      </TableTd>
+                    );
+                  })}
+                </Table.Tr>
+              </Table.Tbody>
             </Table>
           </Stack>
         </Paper>
