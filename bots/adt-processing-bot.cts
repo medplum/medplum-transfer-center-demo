@@ -16,7 +16,11 @@ const ROOM_TRANSFORMS = {
 
 const RELEVANT_LEVELS = ['PCU', '3SURG', 'OBGYN', 'IPREHAB', 'ACUTE', 'MPCU', 'MSICU', 'ED'] as const;
 type RelevantLevel = (typeof RELEVANT_LEVELS)[number];
-const ACCEPTED_ADTS = ['A01', 'A03', 'A08'] as const;
+const ACCEPTED_ADTS = [
+  'A01', // Admit/visit notification
+  'A03', // Discharge a patient
+  'A08'  // Update patient information
+] as const;
 type AcceptedAdt = (typeof ACCEPTED_ADTS)[number];
 
 export async function handler(medplum: MedplumClient, event: BotEvent): Promise<Hl7Message> {
