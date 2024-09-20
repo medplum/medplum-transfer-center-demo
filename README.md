@@ -1,30 +1,73 @@
-# React + TypeScript + Vite
+# HaysMed Regional Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repo is for the HaysMed regional portal. Currently this portal includes a dashboard for the HaysMed transfer center, as well as patient intake, and physician onboarding for the portal.
 
-Currently, two official plugins are available:
+## Repo Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+TODO: Enumerate bots, scripts and their use cases, important custom components such as the , etc.
 
-## Expanding the ESLint configuration
+## Data Model
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+### Locations
 
-- Configure the top-level `parserOptions` property like this:
+The [`Location` FHIR resource](https://hl7.org/fhir/r4/location.html) is used to model the hierarchy of locations within the data model. We have three levels of nesting in the current model:
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+1. Building
+2. Level (or ward)
+3. Room
+
+Each `Location` has a `type` (eg. building, level, room) and can be "part of" another `Location` resource. We use this `partOf` field to represent that a lower-level location is located within the higher-level location that it is "part of".
+
+For example, the room `ACUTE 212` is "part of" the `ACUTE` level, which is in turn "part of" the `HaysMed` hospital building.
+
+This is how that looks hierarchically from the perspective of the FHIR model:
+
+#### HaysMed [Location.type=building, Location.partOf is empty]
+
+- **ACUTE [Location.type=level, Location.partOf=HaysMed]**
+  - ACUTE 212
+    - Location.type=room
+    - **Location.partOf=ACUTE**
+    - Location.alias=212
+  - ACUTE 213
+    - Location.type=room
+    - **Location.partOf=ACUTE**
+    - Location.alias=213
+  - ...other rooms in ACUTE
+- **3SURG [Location.type=level, Location.partOf=HaysMed]**
+  - 3SURG 307
+    - Location.type=room
+    - **Location.partOf=3SURG**
+    - Location.alias=307
+  - 3SURG 308
+    - Location.type=room
+    - **Location.partOf=3SURG**
+    - Location.alias=308
+  - ...other rooms in 3SURG
+- ...other wards of the hospital
+
+Note that along with each location, we also denote an "alias" which is just the room number. This allows us to search for just the room number more directly while still displaying the full `Location.name` (eg. `3SURG 307`) by default for the user when facilitating things like user type-aheads in inputs or displaying locations in a table cell.
+
+This model allows us to use [FHIR search semantics](https://www.hl7.org/fhir/search.html) to search for rooms which are "part of" the `ACUTE` or `3SURG` ward, or query for all levels that are of "part of" the `HaysMed` hospital building.
+
+---
+
+TODO: Include notes about other parts of the data model
+
+## Development
+
+To run the development server for this app, type the following in your console of choice:
+
+```bash
+npm run dev
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+This will host the Vite development server locally, which by default should be hosted on port 3000.
+
+## Building for production
+
+To build the app, run:
+
+```bash
+npm run build
+```
