@@ -137,8 +137,7 @@ export function DashboardPage(): JSX.Element {
 
   return (
     <Container fluid>
-      <Stack gap="lg">
-        <Title>Transfer Center</Title>
+      <Stack gap="lg" mt={15}>
         <BedStatsWidget />
         <Paper {...PAPER_PROPS}>
           <FhirPathTable resourceType="ServiceRequest" query={serviceReqQuery} fields={fields} />
