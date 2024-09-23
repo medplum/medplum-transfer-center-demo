@@ -26,7 +26,11 @@ export function CreateLocationPage(): JSX.Element {
 
   return (
     <Container fluid>
-      <QuestionnaireForm questionnaire={questionnaire} onSubmit={handleSubmit} />
+      <QuestionnaireForm
+        subject={id ? { reference: `Location/${id}` } : undefined}
+        questionnaire={questionnaire}
+        onSubmit={handleSubmit}
+      />
     </Container>
   );
 }
@@ -51,7 +55,7 @@ const createLocationLvlQuestionnaire: Questionnaire = {
       required: true,
     },
     {
-      linkId: 'telecom-phone',
+      linkId: 'telecomPhone',
       type: 'string',
       text: 'Phone',
     },
@@ -78,7 +82,7 @@ const createLocationRoomQuestionnaire: Questionnaire = {
       required: true,
     },
     {
-      linkId: 'operational-status',
+      linkId: 'operationalStatus',
       type: 'choice',
       text: 'Operational Status',
       answerValueSet: 'http://terminology.hl7.org/ValueSet/v2-0116',
