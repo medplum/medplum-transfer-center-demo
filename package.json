@@ -8,6 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix src",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest watch",
     "send-adt": "tsx scripts/send-adt-to-agent.cts 0.0.0.0:56000",
     "hl7-server": "tsx scripts/hl7-server.cts"
   },
@@ -26,6 +29,7 @@
     "@mantine/hooks": "7.12.2",
     "@mantine/notifications": "7.12.2",
     "@medplum/core": "3.2.12",
+    "@medplum/definitions": "3.2.12",
     "@medplum/eslint-config": "3.2.12",
     "@medplum/fhirtypes": "3.2.12",
     "@medplum/react": "3.2.12",
@@ -40,6 +44,7 @@
   },
   "devDependencies": {
     "@medplum/hl7": "3.2.12",
+    "@medplum/mock": "3.2.12",
     "@types/node": "22.5.5",
     "@types/react": "18.3.6",
     "@types/react-dom": "18.3.0",
@@ -50,6 +55,7 @@
     "prettier": "^3.3.3",
     "tsx": "4.19.1",
     "typescript": "5.6.2",
-    "vite": "5.4.5"
+    "vite": "5.4.5",
+    "vitest": "2.1.1"
   }
 }
