@@ -8,6 +8,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 // import { BrowserRouter } from 'react-router-dom';
 
+import { Notifications } from '@mantine/notifications';
 import App from './App.tsx';
 
 const medplum = new MedplumClient({
@@ -41,6 +42,7 @@ root.render(
     <MedplumProvider medplum={medplum}>
       <MantineProvider theme={theme}>
         <App />
+        <Notifications />
       </MantineProvider>
     </MedplumProvider>
   </StrictMode>
