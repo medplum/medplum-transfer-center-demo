@@ -22,7 +22,6 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
     }
     if (!serviceRequest.performer) {
       console.error(`Invalid ServiceRequest for ServiceRequest with id '${id}'`);
-      // navigate('/transfers');
       return;
     }
     // If this questionnaire has already been filled out,
