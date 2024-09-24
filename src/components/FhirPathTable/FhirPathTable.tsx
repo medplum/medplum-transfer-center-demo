@@ -1,8 +1,9 @@
-import { Button, Loader, Table } from '@mantine/core';
+import { ActionIcon, Button, Loader, Table } from '@mantine/core';
 import { normalizeOperationOutcome } from '@medplum/core';
 import type { OperationOutcome, Resource } from '@medplum/fhirtypes';
 // TODO: When porting this back, make sure `useMedplum` comes from `@medplum/react-hooks`
 import { SearchClickEvent, useMedplum } from '@medplum/react';
+import { IconRefresh } from '@tabler/icons-react';
 import { ChangeEvent, MouseEvent, memo, useEffect, useRef, useState } from 'react';
 import { isCheckboxCell, killEvent } from '../../lib/utils';
 import { FhirPathDisplay, FhirPathDisplayRenderProps } from '../FhirPathDisplay/FhirPathDisplay';
@@ -43,6 +44,7 @@ export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTabl
   const { resourceType, query, fields, searchType } = props;
   const [response, setResponse] = useState<SmartSearchResponse | undefined>();
   const [selected, setSelected] = useState<{ [id: string]: boolean }>({});
+  const [refreshCount, setRefreshCount] = useState(0);
 
   const responseRef = useRef<SmartSearchResponse>();
   responseRef.current = response;
@@ -52,7 +54,6 @@ export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTabl
 
   useEffect(() => {
     setOutcome(undefined);
-
     if (searchType === 'fhirSearch') {
       medplum
         .searchResources(resourceType, query)
@@ -67,7 +68,7 @@ export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTabl
         .then(setResponse)
         .catch((err) => setOutcome(normalizeOperationOutcome(err)));
     }
-  }, [medplum, query, searchType, resourceType]);
+  }, [medplum, query, searchType, resourceType, refreshCount]);
 
   function handleSingleCheckboxClick(e: ChangeEvent, id: string): void {
     e.stopPropagation();
@@ -145,6 +146,16 @@ export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTabl
 
   return (
     <div onContextMenu={(e) => killEvent(e)} data-testid="search-control">
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <ActionIcon
+          variant="outline"
+          type="button"
+          onClick={() => setRefreshCount((count) => count + 1)}
+          style={{ marginRight: 10 }}
+        >
+          <IconRefresh />
+        </ActionIcon>
+      </div>
       <Table>
         <Table.Thead>
           <Table.Tr>

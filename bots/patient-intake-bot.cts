@@ -17,7 +17,7 @@ type TransferLinkId =
   | 'startingLocation'
   | 'primaryAcceptingPhysician';
 type TransferPhysLinkId = 'transferPhysFirst' | 'transferPhysLast' | 'transferPhysQual' | 'transferPhysPhone';
-type ValidLinkId = PatientLinkId | TransferLinkId | TransferPhysLinkId | 'dateTime';
+type ValidLinkId = PatientLinkId | TransferLinkId | TransferPhysLinkId | 'dateTime' | 'requisitionId';
 
 type ParsedResults = {
   dateTime: string;
@@ -25,12 +25,10 @@ type ParsedResults = {
   transferringPhysician: Practitioner;
   transferringFacility: Reference | undefined;
   primaryAcceptingPhysician: Reference<Practitioner> | undefined;
+  requisitionId: string;
 };
 
-const TASK_PERFORMER_REF = {
-  reference: 'Practitioner/4ef254da-5a98-4b0b-9819-7fb4b85f11bb',
-  display: 'Derrick Farris',
-} as Reference<Practitioner>;
+const HAYS_MED_REQUISITION_SYSTEM = 'https://haysmed.com/fhir/requisition-id';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
   const results = {
@@ -156,6 +154,14 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         results.primaryAcceptingPhysician = primaryAcceptingPhysician as Reference<Practitioner>;
         return;
       }
+      case 'requisitionId': {
+        const requisitionId = answer.valueString;
+        if (!requisitionId) {
+          throw new Error('Missing requisitionId');
+        }
+        results.requisitionId = requisitionId;
+        return;
+      }
       // case 'startingLocation': {
       //   const primaryAcceptingPhysician = answer.valueReference;
       //   if (!primaryAcceptingPhysician) {
@@ -208,6 +214,10 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Primary accepting physician not specified');
   }
 
+  if (!results.requisitionId) {
+    throw new Error('Missing requisition ID');
+  }
+
   // After processing all items from QuestionnaireResponse,
   // We can process the data we parsed from it
 
@@ -230,7 +240,10 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     resourceType: 'ServiceRequest',
     // This code is a transfer from another facility
     // https://uts.nlm.nih.gov/uts/umls/vocabulary/SNOMEDCT_US/19712007
-    code: { coding: [{ system: 'http://snomed.info/sct', code: '19712007' }] },
+    code: {
+      coding: [{ system: 'http://snomed.info/sct', code: '19712007', display: 'Patient transfer (procedure)' }],
+      text: 'Patient transfer',
+    },
     status: 'active',
     intent: 'proposal',
     subject: createReference(patient),
@@ -238,6 +251,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     // TODO: Add secondary accepting and extension to each physician to indicate primary vs secondary
     performer: [results.primaryAcceptingPhysician],
     supportingInfo: [createReference(event.input)],
+    requisition: { system: HAYS_MED_REQUISITION_SYSTEM, value: results.requisitionId },
     authoredOn: new Date().toISOString(),
   });
 
@@ -254,7 +268,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     resourceType: 'Task',
     status: 'ready',
     priority: 'asap',
-    owner: TASK_PERFORMER_REF,
+    owner: results.primaryAcceptingPhysician,
     intent: 'plan',
     code: { coding: [{ system: 'http://hl7.org/fhir/CodeSystem/task-code', code: 'fulfill' }] },
     input: [

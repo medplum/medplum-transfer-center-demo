@@ -101,6 +101,7 @@ export function QuestionnaireResponseViewer(props: QuestionnaireResponseViewerPr
     'agreement-to-pay-for-treatment-help',
     'notice-of-privacy-practices-help',
     'acknowledgement-for-advance-directives-help',
+    'requisitionId',
   ];
   const items = questionnaireResponse?.item || [];
 
@@ -111,7 +112,7 @@ export function QuestionnaireResponseViewer(props: QuestionnaireResponseViewerPr
       </Title>
       <Stack>
         {items.map((item) => (
-          <ItemDisplay key={item.id} item={item} omittedItems={omittedItems} order={4} />
+          <ItemDisplay key={item.linkId} item={item} omittedItems={omittedItems} order={4} />
         ))}
       </Stack>
     </Document>
