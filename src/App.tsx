@@ -15,7 +15,7 @@ import { Root } from './pages/Root';
 import { ServiceRequestPage } from './pages/ServiceRequestPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignOutPage } from './pages/SignOutPage';
-import { SupplemenaryQuestionnairePage } from './pages/SupplmentaryQuestionnairePage';
+import { SupplementaryQuestionnairePage } from './pages/SupplementaryQuestionnairePage';
 import { TransferPage } from './pages/TransferPage';
 import { UnitesPage } from './pages/UnitsPage';
 import { ViewQuestionnairePage } from './pages/ViewQuestionnairePage';
@@ -40,7 +40,7 @@ function App(): JSX.Element | null {
           children: [{ path: 'ServiceRequest/:id', element: <AssignToRoomPage /> }],
         },
         { path: 'transfers', element: <TransferPage /> },
-        { path: 'new-patient/ServiceRequest/:id', element: <SupplemenaryQuestionnairePage /> },
+        { path: 'new-patient/ServiceRequest/:id', element: <SupplementaryQuestionnairePage /> },
         { path: 'new-patient', element: <NewPatientPage /> },
         { path: 'new-physician', element: <NewPhysicianPage /> },
         // { path: 'laboratory', element: <LaboratoryPage /> },
