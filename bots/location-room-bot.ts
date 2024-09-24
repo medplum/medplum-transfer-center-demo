@@ -33,7 +33,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Missing operationalStatus');
   }
 
-  const partOfLocation = await medplum.readResource('Location', resolveId(partOf) as string);
+  const partOfLocation = medplum.readResource('Location', resolveId(partOf) as string).read();
 
   const location: Location = {
     resourceType: 'Location',

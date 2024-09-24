@@ -11,7 +11,6 @@ const CREATE_LOCATION_ROOM_QUESTIONNAIRE_ID = 'e82a8b16-27fa-4f34-a8cd-daacaac6f
 export function CreateLocationPage(): JSX.Element {
   const navigate = useMedplumNavigate();
   const { id } = useParams();
-
   const medplum = useMedplum();
 
   const handleSubmit = useCallback(
@@ -27,6 +26,7 @@ export function CreateLocationPage(): JSX.Element {
       medplum
         .createResource(responseCopy)
         .then(() => {
+          medplum.invalidateSearches('Location');
           navigate(id ? `/Location/${id}/rooms` : '/Location');
         })
         .catch(console.error);

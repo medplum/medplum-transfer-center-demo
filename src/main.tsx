@@ -1,15 +1,13 @@
 import { MantineProvider, createTheme } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
+import { Notifications } from '@mantine/notifications';
 import '@mantine/core/styles.css';
 import { MedplumClient } from '@medplum/core';
 import { MedplumProvider } from '@medplum/react';
 import '@medplum/react/styles.css';
-
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-// import { BrowserRouter } from 'react-router-dom';
-
-import { Notifications } from '@mantine/notifications';
-import App from './App.tsx';
+import App from '@/App.tsx';
 
 const medplum = new MedplumClient({
   onUnauthenticated: () => (window.location.href = '/'),
@@ -41,8 +39,10 @@ root.render(
   <StrictMode>
     <MedplumProvider medplum={medplum}>
       <MantineProvider theme={theme}>
-        <App />
-        <Notifications />
+        <ModalsProvider>
+          <App />
+          <Notifications />
+        </ModalsProvider>
       </MantineProvider>
     </MedplumProvider>
   </StrictMode>

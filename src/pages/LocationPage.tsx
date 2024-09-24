@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Container, Title } from '@mantine/core';
+import { Button, Container, Group, Text, Title } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { PropertyType } from '@medplum/core';
 import { useMedplum } from '@medplum/react';
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
@@ -9,8 +10,31 @@ import { HAYS_MED_LOCATION_ID } from '@/lib/common';
 export function LocationsPage(): JSX.Element {
   const navigate = useNavigate();
   const { id } = useParams();
-
+  // This is used to force a refresh of the FhirPathTable component
+  const [refresh, setRefresh] = useState(false);
   const medplum = useMedplum();
+
+  const openDeleteConfirmationModal = useCallback(
+    (locationId: string): void => {
+      modals.openConfirmModal({
+        title: 'Confirm Deletion',
+        children: (
+          <Text size="sm">
+            Are you sure you want to delete this location? This action cannot be undone. Please confirm to proceed or
+            cancel to abort.
+          </Text>
+        ),
+        labels: { confirm: 'Confirm', cancel: 'Cancel' },
+        confirmProps: { variant: 'light', color: 'red' },
+        onConfirm: async () => {
+          await medplum.deleteResource('Location', locationId);
+          medplum.invalidateSearches('Location');
+          setRefresh((count) => !count);
+        },
+      });
+    },
+    [medplum]
+  );
 
   const location = id ? medplum.readResource('Location', id).read() : undefined;
 
@@ -34,6 +58,19 @@ export function LocationsPage(): JSX.Element {
           fhirPath: 'operationalStatus',
           propertyType: PropertyType.Coding,
         },
+        {
+          name: '',
+          fhirPath: 'id',
+          propertyType: PropertyType.id,
+          render: ({ value }) => (
+            <Group>
+              <Button onClick={() => navigate(`/Location/${value}/edit`)}>Edit</Button>
+              <Button variant="light" color="red" onClick={() => openDeleteConfirmationModal(value)}>
+                Delete
+              </Button>
+            </Group>
+          ),
+        },
       ];
     }
     return [
@@ -54,7 +91,7 @@ export function LocationsPage(): JSX.Element {
         render: ({ value }) => <Button onClick={() => navigate(`/Location/${value}/rooms`)}>View Rooms</Button>,
       },
     ];
-  }, [id, navigate]);
+  }, [id, navigate, openDeleteConfirmationModal]);
 
   const query = useMemo(() => {
     if (id) {
@@ -92,7 +129,13 @@ export function LocationsPage(): JSX.Element {
       <Button my={15} onClick={handleNewClick}>
         New
       </Button>
-      <FhirPathTable searchType="graphql" resourceType="Location" query={query} fields={fields} />
+      <FhirPathTable
+        key={refresh.toString()}
+        searchType="graphql"
+        resourceType="Location"
+        query={query}
+        fields={fields}
+      />
     </Container>
   );
 }

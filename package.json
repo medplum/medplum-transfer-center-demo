@@ -27,6 +27,7 @@
   "dependencies": {
     "@mantine/core": "7.12.2",
     "@mantine/hooks": "7.12.2",
+    "@mantine/modals": "7.12.2",
     "@mantine/notifications": "7.12.2",
     "@medplum/core": "3.2.12",
     "@medplum/definitions": "3.2.12",
