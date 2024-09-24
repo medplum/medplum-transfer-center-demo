@@ -2,10 +2,12 @@ import { createReference, indexSearchParameterBundle, indexStructureDefinitionBu
 import { readJson, SEARCH_PARAMETER_BUNDLE_FILES } from '@medplum/definitions';
 import { Bundle, QuestionnaireResponse, SearchParameter } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
-import { handler } from './location-lvl-bot';
-
-const HAYS_MED_ORG_ID = '6cd37206-891f-4783-8b31-e6fed9f70ebd';
-const CREATE_LOCATION_LVL_QUESTIONNAIRE_ID = 'cd78cab0-d3b4-4b33-9df2-60289ac3ca8b';
+import {
+  CREATE_LOCATION_LVL_QUESTIONNAIRE_ID,
+  handler,
+  HAYS_MED_LOCATION_ID,
+  HAYS_MED_ORG_ID,
+} from './location-lvl-bot';
 
 describe('Location Lvl Bot', async () => {
   let medplum: MockClient;
@@ -73,13 +75,19 @@ describe('Location Lvl Bot', async () => {
     const location = await medplum.searchOne('Location', 'name=Level 1');
 
     expect(location).toBeDefined();
-    expect(location?.partOf).toEqual(createReference({ resourceType: 'Location', id: HAYS_MED_ORG_ID }));
-    expect(location?.physicalType?.coding?.[0].code).toEqual('lvl');
-    expect(location?.name).toEqual('Level 1');
-    expect(location?.status).toEqual('active');
-    expect(location?.telecom?.[0]).toEqual({
-      system: 'phone',
-      value: '555-555-5555',
+    expect(location).toMatchObject({
+      resourceType: 'Location',
+      partOf: createReference({ resourceType: 'Location', id: HAYS_MED_LOCATION_ID }),
+      managingOrganization: createReference({ resourceType: 'Organization', id: HAYS_MED_ORG_ID }),
+      physicalType: {
+        coding: [
+          { system: 'http://terminology.hl7.org/CodeSystem/location-physical-type', code: 'lvl', display: 'Level' },
+        ],
+      },
+      mode: 'instance',
+      name: 'Level 1',
+      status: 'active',
+      telecom: [{ system: 'phone', value: '555-555-5555' }],
     });
   });
 
