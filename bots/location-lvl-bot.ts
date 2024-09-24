@@ -23,11 +23,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Missing name');
   }
 
-  const status = answers['status']?.valueCoding?.code as Location['status'];
-  if (!status) {
-    throw new Error('Missing status');
-  }
-
   const telecomPhone = answers['telecomPhone']?.valueString;
 
   const location: Location = {
@@ -41,7 +36,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     },
     mode: 'instance',
     name,
-    status,
     telecom: telecomPhone ? [{ system: 'phone', value: telecomPhone }] : undefined,
   };
   await medplum.createResource(location);

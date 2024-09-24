@@ -30,11 +30,6 @@ export function LocationsPage(): JSX.Element {
           propertyType: PropertyType.string,
         },
         {
-          name: 'Status',
-          fhirPath: 'status',
-          propertyType: PropertyType.string,
-        },
-        {
           name: 'Operational Status',
           fhirPath: 'operationalStatus',
           propertyType: PropertyType.Coding,
@@ -45,11 +40,6 @@ export function LocationsPage(): JSX.Element {
       {
         name: 'Name',
         fhirPath: 'name',
-        propertyType: PropertyType.string,
-      },
-      {
-        name: 'Status',
-        fhirPath: 'status',
         propertyType: PropertyType.string,
       },
       {
@@ -73,7 +63,6 @@ export function LocationsPage(): JSX.Element {
           id
           name
           description
-          status
           operationalStatus {
             code
             display
@@ -85,7 +74,6 @@ export function LocationsPage(): JSX.Element {
       ResourceList: LocationList(partof: "Location/${HAYS_MED_LOCATION_ID}", physical_type: "lvl", _sort: "name", _count: 40) {
         id
         name
-        status
         telecom(system: "phone") {
           system,
           value

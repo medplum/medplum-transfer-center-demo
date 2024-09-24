@@ -1,4 +1,4 @@
-import { MedplumClient, BotEvent, getQuestionnaireAnswers, createReference, resolveId } from '@medplum/core';
+import { MedplumClient, BotEvent, getQuestionnaireAnswers, resolveId } from '@medplum/core';
 import { Location, QuestionnaireResponse, Reference } from '@medplum/fhirtypes';
 
 export const HAYS_MED_ORG_ID = '6cd37206-891f-4783-8b31-e6fed9f70ebd';
@@ -28,11 +28,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Missing name');
   }
 
-  const status = answers['status']?.valueCoding?.code as Location['status'];
-  if (!status) {
-    throw new Error('Missing status');
-  }
-
   const operationalStatus = answers['operationalStatus']?.valueCoding;
   if (!operationalStatus) {
     throw new Error('Missing operationalStatus');
@@ -51,7 +46,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     name: `${partOfLocation.name} ${name}`,
     alias: [name],
     description: `Room ${name} on ${partOfLocation.name}`,
-    status,
     operationalStatus,
     telecom: partOfLocation.telecom,
   };

@@ -45,20 +45,6 @@ describe('Location Lvl Bot', async () => {
         },
         {
           id: 'id-2',
-          linkId: 'status',
-          text: 'Status',
-          answer: [
-            {
-              valueCoding: {
-                system: 'http://hl7.org/fhir/location-status',
-                code: 'active',
-                display: 'Active',
-              },
-            },
-          ],
-        },
-        {
-          id: 'id-3',
           linkId: 'telecomPhone',
           text: 'Phone',
           answer: [
@@ -86,7 +72,6 @@ describe('Location Lvl Bot', async () => {
       },
       mode: 'instance',
       name: 'Level 1',
-      status: 'active',
       telecom: [{ system: 'phone', value: '555-555-5555' }],
     });
   });
@@ -99,20 +84,6 @@ describe('Location Lvl Bot', async () => {
       item: [
         {
           id: 'id-2',
-          linkId: 'status',
-          text: 'Status',
-          answer: [
-            {
-              valueCoding: {
-                system: 'http://hl7.org/fhir/location-status',
-                code: 'active',
-                display: 'Active',
-              },
-            },
-          ],
-        },
-        {
-          id: 'id-3',
           linkId: 'telecomPhone',
           text: 'Phone',
           answer: [
@@ -125,37 +96,5 @@ describe('Location Lvl Bot', async () => {
     };
 
     await expect(handler(medplum, { bot, input, contentType, secrets: {} })).rejects.toThrow('Missing name');
-  });
-
-  it('throws error on missing status', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: `Questionnaire/${CREATE_LOCATION_LVL_QUESTIONNAIRE_ID}`,
-      item: [
-        {
-          id: 'id-1',
-          linkId: 'name',
-          text: 'Name',
-          answer: [
-            {
-              valueString: 'Level 1',
-            },
-          ],
-        },
-        {
-          id: 'id-3',
-          linkId: 'telecomPhone',
-          text: 'Phone',
-          answer: [
-            {
-              valueString: '555-555-5555',
-            },
-          ],
-        },
-      ],
-    };
-
-    await expect(handler(medplum, { bot, input, contentType, secrets: {} })).rejects.toThrow('Missing status');
   });
 });

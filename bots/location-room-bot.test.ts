@@ -32,7 +32,6 @@ describe('Location Room Bot', async () => {
       managingOrganization: createReference({ resourceType: 'Organization', id: HAYS_MED_ORG_ID }),
       mode: 'instance',
       name: 'PCU',
-      status: 'active',
       telecom: [{ system: 'phone', value: '555-555-5555' }],
     });
   });
@@ -55,20 +54,6 @@ describe('Location Room Bot', async () => {
         },
         {
           id: 'id-2',
-          linkId: 'status',
-          text: 'Status',
-          answer: [
-            {
-              valueCoding: {
-                system: 'http://hl7.org/fhir/location-status',
-                code: 'active',
-                display: 'Active',
-              },
-            },
-          ],
-        },
-        {
-          id: 'id-3',
           linkId: 'operationalStatus',
           text: 'Operational Status',
           answer: [
@@ -82,7 +67,7 @@ describe('Location Room Bot', async () => {
           ],
         },
         {
-          id: 'id-4',
+          id: 'id-3',
           linkId: 'partOf',
           text: 'Part Of',
           answer: [
@@ -112,7 +97,6 @@ describe('Location Room Bot', async () => {
       name: 'PCU 123',
       alias: ['123'],
       description: 'Room 123 on PCU',
-      status: 'active',
       telecom: [{ system: 'phone', value: '555-555-5555' }],
     });
   });
@@ -135,20 +119,6 @@ describe('Location Room Bot', async () => {
         },
         {
           id: 'id-2',
-          linkId: 'status',
-          text: 'Status',
-          answer: [
-            {
-              valueCoding: {
-                system: 'http://hl7.org/fhir/location-status',
-                code: 'active',
-                display: 'Active',
-              },
-            },
-          ],
-        },
-        {
-          id: 'id-3',
           linkId: 'operationalStatus',
           text: 'Operational Status',
           answer: [
@@ -175,20 +145,6 @@ describe('Location Room Bot', async () => {
       item: [
         {
           id: 'id-2',
-          linkId: 'status',
-          text: 'Status',
-          answer: [
-            {
-              valueCoding: {
-                system: 'http://hl7.org/fhir/location-status',
-                code: 'active',
-                display: 'Active',
-              },
-            },
-          ],
-        },
-        {
-          id: 'id-3',
           linkId: 'operationalStatus',
           text: 'Operational Status',
           answer: [
@@ -202,7 +158,7 @@ describe('Location Room Bot', async () => {
           ],
         },
         {
-          id: 'id-4',
+          id: 'id-3',
           linkId: 'partOf',
           text: 'Part Of',
           answer: [
@@ -215,52 +171,6 @@ describe('Location Room Bot', async () => {
     };
 
     await expect(handler(medplum, { bot, input, contentType, secrets: {} })).rejects.toThrow('Missing name');
-  });
-
-  it('throws error on missing status', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: `Questionnaire/${CREATE_LOCATION_ROOM_QUESTIONNAIRE_ID}`,
-      item: [
-        {
-          id: 'id-1',
-          linkId: 'name',
-          text: 'Name',
-          answer: [
-            {
-              valueString: 'Level 1',
-            },
-          ],
-        },
-        {
-          id: 'id-3',
-          linkId: 'operationalStatus',
-          text: 'Operational Status',
-          answer: [
-            {
-              valueCoding: {
-                system: 'http://terminology.hl7.org/CodeSystem/v2-0116',
-                code: 'O',
-                display: 'Occupied',
-              },
-            },
-          ],
-        },
-        {
-          id: 'id-4',
-          linkId: 'partOf',
-          text: 'Part Of',
-          answer: [
-            {
-              valueReference: createReference(lvlLocation),
-            },
-          ],
-        },
-      ],
-    };
-
-    await expect(handler(medplum, { bot, input, contentType, secrets: {} })).rejects.toThrow('Missing status');
   });
 
   it('throws error on missing operationalStatus', async () => {
@@ -280,21 +190,7 @@ describe('Location Room Bot', async () => {
           ],
         },
         {
-          id: 'id-2',
-          linkId: 'status',
-          text: 'Status',
-          answer: [
-            {
-              valueCoding: {
-                system: 'http://hl7.org/fhir/location-status',
-                code: 'active',
-                display: 'Active',
-              },
-            },
-          ],
-        },
-        {
-          id: 'id-4',
+          id: 'id-3',
           linkId: 'partOf',
           text: 'Part Of',
           answer: [
