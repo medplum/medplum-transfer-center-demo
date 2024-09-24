@@ -13,7 +13,6 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
 
   const serviceRequest = useResource<ServiceRequest>({ reference: `ServiceRequest/${id}` });
 
-  console.log({ serviceRequest });
   const [currentQuestionnaire, setCurrentQuestionnaire] = useState<Reference<Questionnaire>>();
 
   useEffect(() => {
@@ -56,7 +55,7 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
             {
               op: 'add',
               path: '/supportingInfo/1',
-              value: createReference(completedResponse),
+              value: { ...createReference(completedResponse), display: 'Supplementary Questionnaire' },
             },
           ]);
           navigate(`/ServiceRequest/${serviceRequest.id as string}`);
