@@ -2,10 +2,9 @@ import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Container, Title } from '@mantine/core';
 import { PropertyType } from '@medplum/core';
-import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
 import { useMedplum } from '@medplum/react';
-
-const parentOrgId = 'ba836894-122f-42d0-874b-83ea9557e4f3';
+import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
+import { HAYS_MED_LOCATION_ID } from '@/lib/common';
 
 export function LocationsPage(): JSX.Element {
   const navigate = useNavigate();
@@ -83,7 +82,7 @@ export function LocationsPage(): JSX.Element {
       }`;
     }
     return `{
-      ResourceList: LocationList(partof: "Location/${parentOrgId}", physical_type: "lvl", _sort: "name", _count: 40) {
+      ResourceList: LocationList(partof: "Location/${HAYS_MED_LOCATION_ID}", physical_type: "lvl", _sort: "name", _count: 40) {
         id
         name
         status
