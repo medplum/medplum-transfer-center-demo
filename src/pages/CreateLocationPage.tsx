@@ -1,5 +1,6 @@
 import { Container } from '@mantine/core';
-import { Questionnaire, QuestionnaireResponse, Reference } from '@medplum/fhirtypes';
+import { createReference } from '@medplum/core';
+import { Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem, Reference } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum, useMedplumNavigate } from '@medplum/react';
 import { useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
@@ -15,8 +16,16 @@ export function CreateLocationPage(): JSX.Element {
 
   const handleSubmit = useCallback(
     (response: QuestionnaireResponse) => {
+      const responseCopy = { ...response };
+      if (id) {
+        (responseCopy.item as QuestionnaireResponseItem[]).push({
+          linkId: 'partOf',
+          text: 'Part Of',
+          answer: [{ valueReference: createReference({ resourceType: 'Location', id }) }],
+        });
+      }
       medplum
-        .createResource(response)
+        .createResource(responseCopy)
         .then(() => {
           navigate(id ? `/Location/${id}/rooms` : '/Location');
         })
