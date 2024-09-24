@@ -30,6 +30,12 @@ describe('Location Room Bot', async () => {
       resourceType: 'Location',
       partOf: createReference({ resourceType: 'Location', id: HAYS_MED_LOCATION_ID }),
       managingOrganization: createReference({ resourceType: 'Organization', id: HAYS_MED_ORG_ID }),
+      status: 'active',
+      physicalType: {
+        coding: [
+          { system: 'http://terminology.hl7.org/CodeSystem/location-physical-type', code: 'lvl', display: 'Level' },
+        ],
+      },
       mode: 'instance',
       name: 'PCU',
       telecom: [{ system: 'phone', value: '555-555-5555' }],
@@ -88,6 +94,7 @@ describe('Location Room Bot', async () => {
       resourceType: 'Location',
       partOf: createReference(lvlLocation),
       managingOrganization: lvlLocation.managingOrganization,
+      status: 'active',
       physicalType: {
         coding: [
           { system: 'http://terminology.hl7.org/CodeSystem/location-physical-type', code: 'ro', display: 'Room' },
@@ -97,7 +104,7 @@ describe('Location Room Bot', async () => {
       name: 'PCU 123',
       alias: ['123'],
       description: 'Room 123 on PCU',
-      telecom: [{ system: 'phone', value: '555-555-5555' }],
+      telecom: lvlLocation.telecom,
     });
   });
 

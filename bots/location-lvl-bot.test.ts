@@ -65,6 +65,7 @@ describe('Location Lvl Bot', async () => {
       resourceType: 'Location',
       partOf: createReference({ resourceType: 'Location', id: HAYS_MED_LOCATION_ID }),
       managingOrganization: createReference({ resourceType: 'Organization', id: HAYS_MED_ORG_ID }),
+      status: 'active',
       physicalType: {
         coding: [
           { system: 'http://terminology.hl7.org/CodeSystem/location-physical-type', code: 'lvl', display: 'Level' },

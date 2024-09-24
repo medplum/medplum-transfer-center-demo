@@ -37,8 +37,9 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   const location: Location = {
     resourceType: 'Location',
-    partOf,
     managingOrganization: partOfLocation.managingOrganization,
+    partOf,
+    status: 'active',
     physicalType: {
       coding: [{ system: 'http://terminology.hl7.org/CodeSystem/location-physical-type', code: 'ro', display: 'Room' }],
     },
