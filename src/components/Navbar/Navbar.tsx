@@ -1,5 +1,5 @@
 import { Code, Group } from '@mantine/core';
-import { IconAmbulance, IconDashboard, IconLogout, IconStethoscope } from '@tabler/icons-react';
+import { IconAmbulance, IconDashboard, IconHospital, IconLogout, IconStethoscope } from '@tabler/icons-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { Text } from '@mantine/core';
@@ -15,7 +15,7 @@ const menu = [
 
 const adminMenu = [
   { link: '/physicians', label: 'Physicians', icon: IconStethoscope },
-  // { link: '/locations', label: 'Locations', icon: IconHospital },
+  { link: '/Location', label: 'Locations', icon: IconHospital },
   // { link: '/units', label: 'Units', icon: IconBuildingHospital },
   // { link: '/settings', label: 'Settings', icon: IconSettings },
 ];

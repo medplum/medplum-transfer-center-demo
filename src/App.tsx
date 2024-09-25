@@ -1,23 +1,25 @@
 import { ErrorBoundary, Loading, useMedplum, useMedplumProfile } from '@medplum/react';
-// import { IconUser } from '@tabler/icons-react';
 import { Suspense } from 'react';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 
-import { AssignToRoomPage } from './pages/AssignToRoomPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { EditPractitionerPage } from './pages/EditPractitionerPage';
-import { NewPatientPage } from './pages/NewPatientPage';
-import { NewPhysicianPage } from './pages/NewPhysicianPage';
-import { PhysiciansPage } from './pages/PhysiciansPage';
-import { ResourcePage } from './pages/ResourcePage';
-import { Root } from './pages/Root';
-import { ServiceRequestPage } from './pages/ServiceRequestPage';
-import { SignInPage } from './pages/SignInPage';
-import { SignOutPage } from './pages/SignOutPage';
-import { SupplementaryQuestionnairePage } from './pages/SupplementaryQuestionnairePage';
-import { TransferPage } from './pages/TransferPage';
-import { UnitesPage } from './pages/UnitsPage';
-import { ViewQuestionnairePage } from './pages/ViewQuestionnairePage';
+import { AssignToRoomPage } from '@/pages/AssignToRoomPage';
+import { CreateLocationPage } from '@/pages/CreateLocationPage';
+import { DashboardPage } from '@/pages/DashboardPage';
+import { EditLocationPage } from '@/pages/EditLocationPage';
+import { EditPractitionerPage } from '@/pages/EditPractitionerPage';
+import { LocationsPage } from '@/pages/LocationPage';
+import { NewPatientPage } from '@/pages/NewPatientPage';
+import { NewPhysicianPage } from '@/pages/NewPhysicianPage';
+import { PhysiciansPage } from '@/pages/PhysiciansPage';
+import { ResourcePage } from '@/pages/ResourcePage';
+import { Root } from '@/pages/Root';
+import { ServiceRequestPage } from '@/pages/ServiceRequestPage';
+import { SignInPage } from '@/pages/SignInPage';
+import { SignOutPage } from '@/pages/SignOutPage';
+import { SupplementaryQuestionnairePage } from '@/pages/SupplementaryQuestionnairePage';
+import { TransferPage } from '@/pages/TransferPage';
+import { UnitesPage } from '@/pages/UnitsPage';
+import { ViewQuestionnairePage } from '@/pages/ViewQuestionnairePage';
 
 function App(): JSX.Element | null {
   const medplum = useMedplum();
@@ -47,7 +49,11 @@ function App(): JSX.Element | null {
         { path: 'units', element: <UnitesPage /> },
         // { path: 'notifications', element: <NotificationsPage /> },
         // { path: 'settings', element: <SettingsPage /> },
-        // { path: 'locations', element: <LocationsPage /> },
+        { path: 'Location', element: <LocationsPage /> },
+        { path: 'Location/new', element: <CreateLocationPage /> },
+        { path: 'Location/:id/new', element: <CreateLocationPage /> },
+        { path: 'Location/:id/edit', element: <EditLocationPage /> },
+        { path: 'Location/:id/rooms', element: <LocationsPage /> },
         {
           path: 'physicians',
           element: <PhysiciansPage />,
