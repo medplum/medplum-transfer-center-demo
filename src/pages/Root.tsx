@@ -7,7 +7,7 @@ import Header from '@/components/Header';
 import Navbar from '@/components/Navbar';
 
 export function Root(): JSX.Element {
-  const [opened, { toggle }] = useDisclosure();
+  const [opened, { toggle }] = useDisclosure(true);
 
   return (
     <AppShell
