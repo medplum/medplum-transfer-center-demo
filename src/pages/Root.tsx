@@ -3,8 +3,8 @@ import { useDisclosure } from '@mantine/hooks';
 
 import { Outlet } from 'react-router-dom';
 
-import Header from '../components/Header';
-import Navbar from '../components/Navbar';
+import Header from '@/components/Header';
+import Navbar from '@/components/Navbar';
 
 export function Root(): JSX.Element {
   const [opened, { toggle }] = useDisclosure();
@@ -12,7 +12,7 @@ export function Root(): JSX.Element {
   return (
     <AppShell
       header={{ height: 60 }}
-      navbar={{ width: 300, breakpoint: 'md', collapsed: { mobile: !opened } }}
+      navbar={{ width: 300, breakpoint: 'md', collapsed: { mobile: !opened, desktop: !opened } }}
       padding={0}
     >
       <AppShell.Header>
