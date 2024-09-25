@@ -11,6 +11,7 @@ import { LocationsPage } from '@/pages/LocationPage';
 import { NewPatientPage } from '@/pages/NewPatientPage';
 import { NewPhysicianPage } from '@/pages/NewPhysicianPage';
 import { PhysiciansPage } from '@/pages/PhysiciansPage';
+import { QuestionnaireResponsePage } from '@/pages/QuestionnaireResponsePage';
 import { ResourcePage } from '@/pages/ResourcePage';
 import { Root } from '@/pages/Root';
 import { ServiceRequestPage } from '@/pages/ServiceRequestPage';
@@ -49,11 +50,11 @@ function App(): JSX.Element | null {
         { path: 'units', element: <UnitesPage /> },
         // { path: 'notifications', element: <NotificationsPage /> },
         // { path: 'settings', element: <SettingsPage /> },
-        { path: 'Location', element: <LocationsPage /> },
-        { path: 'Location/new', element: <CreateLocationPage /> },
-        { path: 'Location/:id/new', element: <CreateLocationPage /> },
-        { path: 'Location/:id/edit', element: <EditLocationPage /> },
-        { path: 'Location/:id/rooms', element: <LocationsPage /> },
+        { path: '/Location', element: <LocationsPage /> },
+        { path: '/Location/new', element: <CreateLocationPage /> },
+        { path: '/Location/:id/new', element: <CreateLocationPage /> },
+        { path: '/Location/:id/edit', element: <EditLocationPage /> },
+        { path: '/Location/:id/rooms', element: <LocationsPage /> },
         {
           path: 'physicians',
           element: <PhysiciansPage />,
@@ -62,6 +63,7 @@ function App(): JSX.Element | null {
             { path: 'Practitioner/:id/questionnaire', element: <ViewQuestionnairePage /> },
           ],
         },
+        { path: '/QuestionnaireResponse/:id', element: <QuestionnaireResponsePage /> },
         { path: '/:resourceType/:id/*', element: <ResourcePage /> },
         { path: '/ServiceRequest/:id/*', element: <ServiceRequestPage /> },
         { path: '/:resourceType/:id', element: <ResourcePage /> },
