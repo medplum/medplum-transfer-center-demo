@@ -1,8 +1,8 @@
-import { Code, Group } from '@mantine/core';
+import { Code, Group, Text } from '@mantine/core';
+import { useMedplum } from '@medplum/react';
 import { IconAmbulance, IconDashboard, IconHospital, IconLogout, IconStethoscope } from '@tabler/icons-react';
 import { Link, useLocation } from 'react-router-dom';
 
-import { Text } from '@mantine/core';
 import classes from './Navbar.module.css';
 
 const menu = [
@@ -22,6 +22,8 @@ const adminMenu = [
 
 export default function Navbar() {
   const { pathname } = useLocation();
+  const medplum = useMedplum();
+  const isProjectAdmin = medplum.isProjectAdmin();
   const activeItem =
     menu.find((item) => pathname.startsWith(item.link)) || adminMenu.find((item) => pathname.startsWith(item.link));
 
@@ -59,7 +61,8 @@ export default function Navbar() {
         {links}
       </div>
       <div className={classes.horizontalLine}></div>
-      <div className={classes.navbarMain}>{adminLinks}</div>
+
+      {isProjectAdmin ? <div className={classes.navbarMain}>{adminLinks}</div> : null}
 
       <div className={classes.footer}>
         <Link className={classes.link} to="/signout">
