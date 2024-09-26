@@ -1,6 +1,7 @@
-import { PropertyType } from '@medplum/core';
+import { getReferenceString, Operator, SearchRequest } from '@medplum/core';
 import { ServiceRequest } from '@medplum/fhirtypes';
-import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
+import { SearchControl } from '@medplum/react';
+import { useNavigate } from 'react-router-dom';
 
 interface TasksTabProps {
   serviceRequest: ServiceRequest;
@@ -8,29 +9,27 @@ interface TasksTabProps {
 
 export function TasksTab(props: TasksTabProps): JSX.Element {
   const { serviceRequest } = props;
+  const navigate = useNavigate();
 
-  const query = `{
-    ResourceList: TaskList(based_on: "ServiceRequest/${serviceRequest.id}") {
-      id
-      status
-      owner {
-        display
-      }
-    }
-  }`;
+  const search: SearchRequest = {
+    resourceType: 'Task',
+    fields: ['status', 'owner'],
+    filters: [
+      {
+        code: 'based-on',
+        operator: Operator.EQUALS,
+        value: getReferenceString(serviceRequest),
+      },
+    ],
+  };
 
-  const fields: FhirPathTableField[] = [
-    {
-      name: 'Status',
-      fhirPath: 'status',
-      propertyType: PropertyType.code,
-    },
-    {
-      name: 'Primary Accepting Physician',
-      fhirPath: 'owner.display',
-      propertyType: PropertyType.string,
-    },
-  ];
-
-  return <FhirPathTable searchType="graphql" resourceType="Task" query={query} fields={fields} />;
+  return (
+    <SearchControl
+      search={search}
+      hideToolbar={true}
+      onLoad={(e) => console.log('onLoad', e)}
+      onClick={(e) => navigate(`/${getReferenceString(e.resource)}`)}
+      onAuxClick={(e) => navigate(`/${getReferenceString(e.resource)}`)}
+    />
+  );
 }
