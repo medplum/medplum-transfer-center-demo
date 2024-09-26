@@ -2,11 +2,12 @@ import { Grid, GridCol, Loader } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { normalizeErrorString, resolveId } from '@medplum/core';
 import { Patient, ServiceRequest } from '@medplum/fhirtypes';
-import { PatientSummary, useMedplum } from '@medplum/react';
+import { Document, PatientSummary, useMedplum } from '@medplum/react';
 import { IconCircleOff } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ServiceRequestDetails } from '../components/PatientDetails/PatientDetails';
+import { ServiceRequestActions } from '@/components/actions/ServiceRequestActions';
 
 export function ServiceRequestPage(): JSX.Element {
   const medplum = useMedplum();
@@ -56,7 +57,7 @@ export function ServiceRequestPage(): JSX.Element {
       });
   }, [serviceRequest, medplum]);
 
-  if (!patient) {
+  if (!serviceRequest || !patient) {
     return <Loader />;
   }
 
@@ -65,8 +66,13 @@ export function ServiceRequestPage(): JSX.Element {
       <GridCol span={4}>
         <PatientSummary patient={patient} />
       </GridCol>
-      <GridCol span={8}>
+      <GridCol span={5}>
         <ServiceRequestDetails patient={patient} onChange={setServiceRequest} />
+      </GridCol>
+      <GridCol span={3}>
+        <Document p="xs">
+          <ServiceRequestActions />
+        </Document>
       </GridCol>
     </Grid>
   );
