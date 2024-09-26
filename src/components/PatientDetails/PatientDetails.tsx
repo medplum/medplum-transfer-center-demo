@@ -78,7 +78,7 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
         </Tabs.List>
         <Tabs.Panel value="details">
           <Container p="md">
-            <ResourceTable value={serviceRequest} />
+            <ResourceTable ignoreMissingValues value={serviceRequest} />
           </Container>
         </Tabs.Panel>
         <Tabs.Panel value="history">
