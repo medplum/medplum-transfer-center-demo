@@ -5,13 +5,14 @@ import { Patient, ServiceRequest } from '@medplum/fhirtypes';
 import { Document, PatientSummary, useMedplum } from '@medplum/react';
 import { IconCircleOff } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ServiceRequestDetails } from '../components/PatientDetails/PatientDetails';
 import { ServiceRequestActions } from '@/components/actions/ServiceRequestActions';
 
 export function ServiceRequestPage(): JSX.Element {
   const medplum = useMedplum();
   const { id } = useParams() as { id: string };
+  const navigate = useNavigate();
   const [serviceRequest, setServiceRequest] = useState<ServiceRequest | undefined>();
   const [patient, setPatient] = useState<Patient>();
 
@@ -71,7 +72,13 @@ export function ServiceRequestPage(): JSX.Element {
       </GridCol>
       <GridCol span={3}>
         <Document p="xs">
-          <ServiceRequestActions />
+          <ServiceRequestActions
+            serviceRequest={serviceRequest}
+            onChange={(serviceRequest) => {
+              setServiceRequest(serviceRequest);
+              navigate(`/ServiceRequest/${serviceRequest.id}/notes`);
+            }}
+          />
         </Document>
       </GridCol>
     </Grid>

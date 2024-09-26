@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PatientHeader } from '@/components/PatientHeader/PatientHeader';
 import { QuestionnaireResponseViewer } from '@/components/QuestionnaireResponseViewer';
+import { NotesTab } from './NotesTab';
 import { TasksTab } from './TasksTab';
 
 interface PatientDetailsProps {
@@ -46,7 +47,7 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
     }
   }, [serviceRequest, medplum]);
 
-  const tabs = ['Details', 'History', 'Tasks'];
+  const tabs = ['Details', 'History', 'Tasks', 'Notes'];
   if (intakeResponse) {
     tabs.push('Intake');
   }
@@ -93,6 +94,9 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
         )}
         <Tabs.Panel value="tasks">
           <TasksTab serviceRequest={serviceRequest} />
+        </Tabs.Panel>
+        <Tabs.Panel value="notes">
+          <NotesTab serviceRequest={serviceRequest} />
         </Tabs.Panel>
       </Tabs>
     </Document>

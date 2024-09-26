@@ -1,18 +1,27 @@
 import { Button, Stack, Title } from '@mantine/core';
 import { useState } from 'react';
 import { AssignToRoomModal } from '@/components/actions/AssignToRoomModal';
+import { AddServiceRequestNoteModal } from '@/components/actions/AddServiceRequestNoteModal';
+import { ServiceRequest } from '@medplum/fhirtypes';
 
-export function ServiceRequestActions(): JSX.Element {
-  const [openModal, setOpenModal] = useState(false);
+interface ServiceRequestActionsProps {
+  serviceRequest: ServiceRequest;
+  onChange: (updatedServiceRequest: ServiceRequest) => void;
+}
+
+export function ServiceRequestActions(props: ServiceRequestActionsProps): JSX.Element {
+  const { serviceRequest, onChange } = props;
+  const [openAssignToRoomModal, setOpenAssignToRoomModal] = useState(false);
 
   return (
-    <>
-      <Stack p="xs" m="xs">
-        <Title>Actions</Title>
-        <Button onClick={() => setOpenModal(true)}>Set Call Disposition</Button>
-      </Stack>
+    <Stack p="xs" m="xs">
+      <Title>Actions</Title>
+      <Stack>
+        <Button onClick={() => setOpenAssignToRoomModal(true)}>Set Call Disposition</Button>
+        <AssignToRoomModal opened={openAssignToRoomModal} onClose={() => setOpenAssignToRoomModal(false)} />
 
-      <AssignToRoomModal opened={openModal} onClose={() => setOpenModal(false)} />
-    </>
+        <AddServiceRequestNoteModal serviceRequest={serviceRequest} onChange={onChange} />
+      </Stack>
+    </Stack>
   );
 }
