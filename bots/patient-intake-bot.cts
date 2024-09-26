@@ -281,6 +281,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         valueReference: createReference(patient),
       },
     ],
+    basedOn: [createReference(svcReq)],
   });
 
   // Create an encounter to track the Patient's location

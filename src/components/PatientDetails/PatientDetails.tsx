@@ -3,8 +3,9 @@ import { Patient, QuestionnaireResponse, ServiceRequest } from '@medplum/fhirtyp
 import { DefaultResourceTimeline, Document, ResourceHistoryTable, useMedplum, useResource } from '@medplum/react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { PatientHeader } from '../PatientHeader/PatientHeader';
-import { QuestionnaireResponseViewer } from '../QuestionnaireResponseViewer/QuestionnaireResponseViewer';
+import { PatientHeader } from '@/components/PatientHeader/PatientHeader';
+import { QuestionnaireResponseViewer } from '@/components/QuestionnaireResponseViewer';
+import { TasksTab } from './TasksTab';
 
 interface PatientDetailsProps {
   patient: Patient;
@@ -12,8 +13,7 @@ interface PatientDetailsProps {
 }
 
 export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
-  const { onChange } = props;
-
+  const { patient } = props;
   const { id } = useParams();
   const medplum = useMedplum();
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
     }
   }, [serviceRequest, medplum]);
 
-  const tabs = ['Details', 'History'];
+  const tabs = ['Details', 'History', 'Tasks'];
   if (intakeResponse) {
     tabs.push('Intake');
   }
@@ -55,25 +55,6 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
   }
   const tab = window.location.pathname.split('/').pop();
   const currentTab = tab && tabs.map((t) => t.toLowerCase()).includes(tab) ? tab : tabs[0].toLowerCase();
-
-  // async function handleServiceRequestEdit(newServiceRequest: Resource): Promise<void> {
-  //   try {
-  //     const updatedPatient = (await medplum.updateResource(cleanResource(newServiceRequest))) as ServiceRequest;
-  //     showNotification({
-  //       icon: <IconCircleCheck />,
-  //       title: 'Success',
-  //       message: 'Referral updated',
-  //     });
-  //     onChange(updatedPatient);
-  //     window.scrollTo(0, 0);
-  //   } catch (err) {
-  //     showNotification({
-  //       icon: <IconCircleOff />,
-  //       title: 'Error',
-  //       message: normalizeErrorString(err),
-  //     });
-  //   }
-  // }
 
   function handleTabChange(newTab: string | null): void {
     navigate(`/ServiceRequest/${id}/${newTab ?? ''}`);
@@ -85,7 +66,7 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
 
   return (
     <Document>
-      <PatientHeader patient={props.patient} />
+      <PatientHeader patient={patient} />
       <Tabs value={currentTab.toLowerCase()} onChange={handleTabChange}>
         <Tabs.List>
           {tabs.map((tab) => (
@@ -97,9 +78,6 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
         <Tabs.Panel value="details">
           <DefaultResourceTimeline resource={serviceRequest} />
         </Tabs.Panel>
-        {/* <Tabs.Panel value="edit">
-          <ResourceForm defaultValue={serviceRequest} onSubmit={handleServiceRequestEdit} />
-        </Tabs.Panel> */}
         <Tabs.Panel value="history">
           <ResourceHistoryTable resourceType="ServiceRequest" id={id} />
         </Tabs.Panel>
@@ -113,6 +91,9 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
             <QuestionnaireResponseViewer response={supplementaryResponse} />
           </Tabs.Panel>
         )}
+        <Tabs.Panel value="tasks">
+          <TasksTab serviceRequest={serviceRequest} />
+        </Tabs.Panel>
       </Tabs>
     </Document>
   );
