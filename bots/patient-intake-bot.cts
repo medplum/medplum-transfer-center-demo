@@ -250,7 +250,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     requester: createReference(transferringPhys),
     // TODO: Add secondary accepting and extension to each physician to indicate primary vs secondary
     performer: [results.primaryAcceptingPhysician],
-    supportingInfo: [createReference(event.input)],
+    supportingInfo: [{ ...createReference(event.input), display: 'Patient Intake Form' }],
     requisition: { system: HAYS_MED_REQUISITION_SYSTEM, value: results.requisitionId },
     authoredOn: new Date().toISOString(),
   });
