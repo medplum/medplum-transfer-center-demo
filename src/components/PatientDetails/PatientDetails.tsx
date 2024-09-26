@@ -1,6 +1,6 @@
-import { Loader, Tabs } from '@mantine/core';
+import { Container, Loader, Tabs } from '@mantine/core';
 import { Patient, QuestionnaireResponse, ServiceRequest } from '@medplum/fhirtypes';
-import { DefaultResourceTimeline, Document, ResourceHistoryTable, useMedplum, useResource } from '@medplum/react';
+import { DefaultResourceTimeline, Document, ResourceTable, useMedplum, useResource } from '@medplum/react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PatientHeader } from '@/components/PatientHeader/PatientHeader';
@@ -77,10 +77,13 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
           ))}
         </Tabs.List>
         <Tabs.Panel value="details">
-          <DefaultResourceTimeline resource={serviceRequest} />
+          <Container p="md">
+            <ResourceTable value={serviceRequest} />
+          </Container>
         </Tabs.Panel>
         <Tabs.Panel value="history">
-          <ResourceHistoryTable resourceType="ServiceRequest" id={id} />
+          {/* Does not show note field as it has its own dedicated tab */}
+          <DefaultResourceTimeline resource={{ ...serviceRequest, note: undefined }} />
         </Tabs.Panel>
         {intakeResponse && (
           <Tabs.Panel value="intake">
@@ -96,7 +99,9 @@ export function ServiceRequestDetails(props: PatientDetailsProps): JSX.Element {
           <TasksTab serviceRequest={serviceRequest} />
         </Tabs.Panel>
         <Tabs.Panel value="notes">
-          <NotesTab serviceRequest={serviceRequest} />
+          <Container p="md">
+            <NotesTab serviceRequest={serviceRequest} />
+          </Container>
         </Tabs.Panel>
       </Tabs>
     </Document>

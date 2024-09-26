@@ -1,4 +1,4 @@
-import { Blockquote, Stack } from '@mantine/core';
+import { Blockquote, Text, Stack } from '@mantine/core';
 import { Annotation, ServiceRequest } from '@medplum/fhirtypes';
 
 interface NotesTabProps {
@@ -10,11 +10,7 @@ export function NotesTab(props: NotesTabProps): JSX.Element {
   const notes = serviceRequest.note;
 
   if (!notes) {
-    return (
-      <div>
-        <p>No Notes</p>
-      </div>
-    );
+    return <Text>No Notes</Text>;
   }
 
   // Sort notes so the most recent are at the top of the page
