@@ -13,7 +13,7 @@ export function TasksTab(props: TasksTabProps): JSX.Element {
 
   const search: SearchRequest = {
     resourceType: 'Task',
-    fields: ['status', 'owner'],
+    fields: ['status', 'owner', 'code'],
     filters: [
       {
         code: 'based-on',
