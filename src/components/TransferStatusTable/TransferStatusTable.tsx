@@ -1,4 +1,5 @@
 import ErrorAlert from '@/components/ErrorAlert';
+import { StatusBadge, StatusBadgeProps } from '@/components/StatusBadge';
 import { DataTable } from 'mantine-datatable';
 import { ReactNode } from 'react';
 
@@ -7,7 +8,7 @@ export type ProjectItem = {
   name: string;
   date: string;
   transfer_from: string;
-  state: Status;
+  state: StatusBadgeProps['status'];
   transfer_doctor: string;
 };
 

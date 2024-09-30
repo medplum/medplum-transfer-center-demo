@@ -78,7 +78,7 @@ export function BedStatsWidget(): JSX.Element {
           locations.push({ ...level });
         }
         setLocations(locations);
-      } catch (error) {
+      } catch {
         setLocationsError('Failed to fetch locations');
       } finally {
         setLoadingLocations(false);
