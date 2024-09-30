@@ -2,7 +2,6 @@ name: Build
 
 on:
   push:
-    # branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -22,6 +21,18 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache node modules
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
       - name: Log npm stats
         run: |
           echo "node version: $(node --version)"
@@ -35,25 +46,23 @@ jobs:
 
   lint:
     name: Run linter
+    needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [build]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Log npm stats
-        run: |
-          echo "node version: $(node --version)"
-          echo "npm version: $(npm --version)"
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-cache-node-modules-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install dependencies
         run: npm ci --maxsockets 1
@@ -63,25 +72,23 @@ jobs:
 
   test:
     name: Run tests
+    needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: [build]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Log npm stats
-        run: |
-          echo "node version: $(node --version)"
-          echo "npm version: $(npm --version)"
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-cache-node-modules-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install dependencies
         run: npm ci --maxsockets 1
