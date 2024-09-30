@@ -2,18 +2,18 @@ import { evalFhirPath } from '@medplum/core';
 import { Resource } from '@medplum/fhirtypes';
 import { ResourcePropertyDisplay } from '@medplum/react';
 
-export interface FhirPathDisplayRenderProps<T = any> {
+export interface FhirPathDisplayRenderProps<T = unknown> {
   readonly value: T;
 }
 
-export interface FhirPathDisplayProps<T = any> {
+export interface FhirPathDisplayProps<T = unknown> {
   readonly resource: Resource;
   readonly path: string;
   readonly propertyType: string;
   readonly render?: (props: FhirPathDisplayRenderProps<T>) => JSX.Element;
 }
 
-export function FhirPathDisplay<T = any>(props: FhirPathDisplayProps<T>): JSX.Element | null {
+export function FhirPathDisplay<T = unknown>(props: FhirPathDisplayProps<T>): JSX.Element | null {
   let value;
 
   try {

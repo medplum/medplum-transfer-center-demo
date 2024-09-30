@@ -65,7 +65,7 @@ export function LocationsPage(): JSX.Element {
           render: ({ value }) => (
             <Group>
               <Button onClick={() => navigate(`/Location/${value}/edit`)}>Edit</Button>
-              <Button variant="light" color="red" onClick={() => openDeleteConfirmationModal(value)}>
+              <Button variant="light" color="red" onClick={() => openDeleteConfirmationModal(value as string)}>
                 Delete
               </Button>
             </Group>

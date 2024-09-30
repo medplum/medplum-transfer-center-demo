@@ -1,6 +1,7 @@
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
 import { Button, Container, Title } from '@mantine/core';
 import { PropertyType } from '@medplum/core';
+import { Location, Reference } from '@medplum/fhirtypes';
 import { ReferenceDisplay, useMedplumNavigate } from '@medplum/react';
 import { useMemo } from 'react';
 
@@ -77,7 +78,7 @@ export function TransferPage(): JSX.Element {
         name: 'Location',
         fhirPath: 'EncounterList[0].location[0].location',
         propertyType: PropertyType.Reference,
-        render: ({ value }) => <ReferenceDisplay value={value} link />,
+        render: ({ value }) => <ReferenceDisplay value={value as Reference<Location>} link />,
       },
       {
         name: '',

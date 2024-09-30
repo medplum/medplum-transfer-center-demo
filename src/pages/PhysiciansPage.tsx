@@ -44,7 +44,7 @@ export function PhysiciansPage(): JSX.Element {
         name: 'Questionnaire',
         fhirPath: 'id',
         propertyType: PropertyType.id,
-        render: ({ value }) => <ViewQuestionnaireButton value={value} />,
+        render: ({ value }) => <ViewQuestionnaireButton value={value as string} />,
       },
       {
         name: '',

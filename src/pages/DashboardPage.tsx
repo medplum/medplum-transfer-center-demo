@@ -1,6 +1,6 @@
 import { BedStatsWidget } from '@/components/BedStatsWidget/BedStatsWidget';
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
-import { StatusBadge } from '@/components/StatusBadge/StatusBadge';
+import { StatusBadge, StatusBadgeProps } from '@/components/StatusBadge/StatusBadge';
 import { PAPER_PROPS } from '@/lib/common';
 import { Button, Container, Paper, Stack, Table, TableTd, TableTh, Text, Title } from '@mantine/core';
 import { PropertyType, formatDate } from '@medplum/core';
@@ -106,7 +106,11 @@ export function DashboardPage(): JSX.Element {
         fhirPath: 'authoredOn',
         propertyType: PropertyType.date,
         render: ({ value }) => (
-          <Text>{formatDate(value, undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</Text>
+          <Text>
+            {formatDate(value as string | undefined, undefined, {
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            })}
+          </Text>
         ),
       },
       {
@@ -123,7 +127,7 @@ export function DashboardPage(): JSX.Element {
         name: 'State',
         fhirPath: 'CommunicationRequestList[0].CommunicationList[0].statusReason.text',
         propertyType: PropertyType.string,
-        render: ({ value }) => <StatusBadge status={value ?? 'In Progress'} />,
+        render: ({ value }) => <StatusBadge status={(value as StatusBadgeProps['status']) ?? 'In Progress'} />,
       },
       {
         name: '',

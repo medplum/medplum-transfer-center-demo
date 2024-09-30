@@ -8,7 +8,7 @@ import { ChangeEvent, MouseEvent, memo, useEffect, useRef, useState } from 'reac
 import { isCheckboxCell, killEvent } from '../../lib/utils';
 import { FhirPathDisplay, FhirPathDisplayRenderProps } from '../FhirPathDisplay/FhirPathDisplay';
 
-export interface FhirPathTableField<T = any> {
+export interface FhirPathTableField<T = unknown> {
   readonly propertyType: string;
   readonly name: string;
   readonly fhirPath: string;
@@ -230,7 +230,7 @@ export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTabl
         </div>
       )}
       {props.onBulk && (
-        <Button onClick={() => (props.onBulk as (ids: string[]) => any)(Object.keys(selectedRef.current))}>
+        <Button onClick={() => (props.onBulk as (ids: string[]) => unknown)(Object.keys(selectedRef.current))}>
           Bulk...
         </Button>
       )}
