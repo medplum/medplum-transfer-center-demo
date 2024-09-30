@@ -8,7 +8,7 @@ type Status =
   | 'Cancellation'
   | 'In Progress';
 
-type StatusBadgeProps = { status: Status | undefined };
+export type StatusBadgeProps = { status: Status | undefined };
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {
   let color: MantineColor = '';
