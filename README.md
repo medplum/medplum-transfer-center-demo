@@ -1,3 +1,5 @@
+[![Build](https://github.com/HaysMed/haysmed-regional-portal/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/HaysMed/haysmed-regional-portal/actions/workflows/build.yml)
+
 # HaysMed Regional Portal
 
 This repo is for the HaysMed regional portal. Currently this portal includes a dashboard for the HaysMed transfer center, as well as patient intake, and physician onboarding for the portal.
