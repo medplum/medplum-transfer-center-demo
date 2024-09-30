@@ -1,6 +1,6 @@
 import { BedStatsWidget } from '@/components/BedStatsWidget/BedStatsWidget';
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
-import { StatusBadge, StatusBadgeProps } from '@/components/StatusBadge/StatusBadge';
+import { StatusBadge, StatusBadgeProps } from '@/components/StatusBadge';
 import { PAPER_PROPS } from '@/lib/common';
 import { Button, Container, Paper, Stack, Table, TableTd, TableTh, Text, Title } from '@mantine/core';
 import { PropertyType, formatDate } from '@medplum/core';
