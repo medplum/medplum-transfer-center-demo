@@ -10,12 +10,7 @@ import {
 } from '@medplum/fhirtypes';
 
 type PatientLinkId = 'firstName' | 'lastName' | 'birthdate' | 'diagnosis' | 'chiefComplaint';
-type TransferLinkId =
-  | 'transferOrigin'
-  | 'transferFacility'
-  | 'acceptingSpecialty'
-  | 'startingLocation'
-  | 'primaryAcceptingPhysician';
+type TransferLinkId = 'transferOrigin' | 'transferFacility';
 type TransferPhysLinkId = 'transferPhysFirst' | 'transferPhysLast' | 'transferPhysQual' | 'transferPhysPhone';
 type ValidLinkId = PatientLinkId | TransferLinkId | TransferPhysLinkId | 'dateTime' | 'requisitionId';
 
@@ -24,7 +19,6 @@ type ParsedResults = {
   patient: Patient;
   transferringPhysician: Practitioner;
   transferringFacility: Reference | undefined;
-  primaryAcceptingPhysician: Reference<Practitioner> | undefined;
   requisitionId: string;
 };
 
@@ -35,7 +29,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     patient: { resourceType: 'Patient' } satisfies Patient,
     transferringFacility: undefined,
     transferringPhysician: { resourceType: 'Practitioner', name: [{}] } satisfies Practitioner,
-    primaryAcceptingPhysician: undefined,
   } as ParsedResults;
 
   if (event.input?.resourceType !== 'QuestionnaireResponse') {
@@ -107,13 +100,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         results.transferringFacility = transferFacility;
         return;
       }
-      case 'acceptingSpecialty': {
-        const acceptingSpecialty = answer.valueCoding;
-        if (!acceptingSpecialty) {
-          throw new Error('Accepting specialty not selected');
-        }
-        return;
-      }
       case 'transferPhysFirst': {
         const transferPhysFirst = answer.valueString;
         if (!transferPhysFirst) {
@@ -146,14 +132,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         results.transferringPhysician.telecom = [{ system: 'phone', value: transferPhysPhone }];
         return;
       }
-      case 'primaryAcceptingPhysician': {
-        const primaryAcceptingPhysician = answer.valueReference;
-        if (!primaryAcceptingPhysician) {
-          throw new Error('Missing accepting physician');
-        }
-        results.primaryAcceptingPhysician = primaryAcceptingPhysician as Reference<Practitioner>;
-        return;
-      }
       case 'requisitionId': {
         const requisitionId = answer.valueString;
         if (!requisitionId) {
@@ -162,14 +140,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         results.requisitionId = requisitionId;
         return;
       }
-      // case 'startingLocation': {
-      //   const primaryAcceptingPhysician = answer.valueReference;
-      //   if (!primaryAcceptingPhysician) {
-      //     throw new Error('Missing accepting physician');
-      //   }
-      //   results.primaryAcceptingPhysician = primaryAcceptingPhysician as Reference<Practitioner>;
-      //   return;
-      // }
       // case 'transferLocation': {
       //   const locRef = item.answer?.[0]?.valueReference;
       //   if (!locRef?.reference) {
@@ -210,10 +180,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Transferring origin not specified');
   }
 
-  if (!results.primaryAcceptingPhysician) {
-    throw new Error('Primary accepting physician not specified');
-  }
-
   if (!results.requisitionId) {
     throw new Error('Missing requisition ID');
   }
@@ -248,8 +214,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     intent: 'proposal',
     subject: createReference(patient),
     requester: createReference(transferringPhys),
-    // TODO: Add secondary accepting and extension to each physician to indicate primary vs secondary
-    performer: [results.primaryAcceptingPhysician],
     supportingInfo: [{ ...createReference(event.input), display: 'Patient Intake Form' }],
     requisition: { system: HAYS_MED_REQUISITION_SYSTEM, value: results.requisitionId },
     authoredOn: new Date().toISOString(),
@@ -268,7 +232,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     resourceType: 'Task',
     status: 'ready',
     priority: 'asap',
-    owner: results.primaryAcceptingPhysician,
     intent: 'plan',
     code: { coding: [{ system: 'http://hl7.org/fhir/CodeSystem/task-code', code: 'fulfill' }] },
     input: [
