@@ -58,7 +58,7 @@ export function NewPatientPage(): JSX.Element {
             console.error('Last error while retrying', lastErr);
             return;
           }
-          navigate(`new-patient/ServiceRequest/${serviceRequest.id as string}`);
+          navigate(`/ServiceRequest/${serviceRequest.id as string}`);
         })
         .catch(console.error);
     },

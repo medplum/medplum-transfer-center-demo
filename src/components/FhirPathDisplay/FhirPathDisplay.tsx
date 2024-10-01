@@ -3,6 +3,7 @@ import { Resource } from '@medplum/fhirtypes';
 import { ResourcePropertyDisplay } from '@medplum/react';
 
 export interface FhirPathDisplayRenderProps<T = unknown> {
+  readonly resource: Resource;
   readonly value: T;
 }
 
@@ -31,7 +32,7 @@ export function FhirPathDisplay<T = unknown>(props: FhirPathDisplayProps<T>): JS
     );
   }
   if (props.render) {
-    return props.render({ value: value[0] as T });
+    return props.render({ resource: props.resource, value: value[0] as T });
   }
   return <ResourcePropertyDisplay value={value[0] || ''} propertyType={props.propertyType} />;
 }
