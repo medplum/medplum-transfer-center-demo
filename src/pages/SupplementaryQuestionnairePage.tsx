@@ -1,10 +1,10 @@
 import { Container } from '@mantine/core';
 import { createReference } from '@medplum/core';
-import { Questionnaire, QuestionnaireResponse, Reference, ServiceRequest } from '@medplum/fhirtypes';
+import { QuestionnaireResponse, ServiceRequest } from '@medplum/fhirtypes';
 import { Loading, QuestionnaireForm, useMedplum, useMedplumNavigate, useResource } from '@medplum/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { getSupplementaryQuestionnaireContext } from '@/utils/getSupplementaryQuestionnaireContext';
+import { useSupplementaryQuestionnaireContext } from '@/hooks/useSupplementaryQuestionnaireContext';
 
 export function SupplementaryQuestionnairePage(): JSX.Element {
   const medplum = useMedplum();
@@ -14,43 +14,24 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
 
   const serviceRequest = useResource<ServiceRequest>({ reference: `ServiceRequest/${id}` });
 
-  const [currentQuestionnaire, setCurrentQuestionnaire] = useState<Reference<Questionnaire>>();
-
-  const { query, isResponseAvailable, display } = getSupplementaryQuestionnaireContext(serviceRequest, pathname);
+  const { questionnaire, isAcceptingResponse, display } = useSupplementaryQuestionnaireContext(
+    serviceRequest,
+    pathname
+  );
 
   useEffect(() => {
     if (!serviceRequest) {
       return;
     }
 
-    // If this questionnaire has already been filled out, redirect to the ServiceRequest page
-    // for this referral
-    if (isResponseAvailable) {
+    if (!isAcceptingResponse()) {
       navigate(`/ServiceRequest/${serviceRequest.id as string}`);
-      return;
     }
-
-    const fetchQuestionnaire = async () => {
-      try {
-        const questionnaire = await medplum.searchOne('Questionnaire', query);
-        // If no questionnaire to fill out, redirect to ServiceRequest page for this referral
-        if (!questionnaire) {
-          console.debug(`No questionnaire found for query: ${query}`);
-          navigate(`/ServiceRequest/${serviceRequest.id}`);
-          return;
-        }
-        setCurrentQuestionnaire(createReference<Questionnaire>(questionnaire));
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchQuestionnaire();
-  }, [medplum, navigate, id, serviceRequest, isResponseAvailable, query]);
+  }, [isAcceptingResponse, navigate, serviceRequest]);
 
   const handleSubmit = useCallback(
     async (response: QuestionnaireResponse) => {
-      if (!serviceRequest || !currentQuestionnaire?.reference) {
+      if (!serviceRequest || !questionnaire) {
         return;
       }
 
@@ -68,15 +49,15 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
         console.error(error);
       }
     },
-    [serviceRequest, currentQuestionnaire?.reference, medplum, display, navigate]
+    [display, medplum, navigate, questionnaire, serviceRequest]
   );
 
   return (
     <Container fluid>
-      {serviceRequest && currentQuestionnaire ? (
+      {serviceRequest && questionnaire ? (
         <QuestionnaireForm
           subject={createReference(serviceRequest)}
-          questionnaire={currentQuestionnaire}
+          questionnaire={createReference(questionnaire)}
           onSubmit={handleSubmit}
         />
       ) : (

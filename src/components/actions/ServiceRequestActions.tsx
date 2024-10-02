@@ -4,7 +4,7 @@ import { AssignToRoomModal } from '@/components/actions/AssignToRoomModal';
 import { AddServiceRequestNoteModal } from '@/components/actions/AddServiceRequestNoteModal';
 import { ServiceRequest } from '@medplum/fhirtypes';
 import { useNavigate } from 'react-router-dom';
-import { getSupplementaryQuestionnaireContext } from '@/utils/getSupplementaryQuestionnaireContext';
+import { useSupplementaryQuestionnaireContext } from '@/hooks/useSupplementaryQuestionnaireContext';
 
 interface ServiceRequestActionsProps {
   serviceRequest: ServiceRequest;
@@ -16,26 +16,22 @@ export function ServiceRequestActions(props: ServiceRequestActionsProps): JSX.El
   const [openAssignToRoomModal, setOpenAssignToRoomModal] = useState(false);
   const navigate = useNavigate();
 
-  const { isResponseAvailable: isAcceptingPhysicianResponseAvailable } = getSupplementaryQuestionnaireContext(
+  const acceptingPhysicianQuestionnaire = useSupplementaryQuestionnaireContext(
     serviceRequest,
     '/accepting-physician-supplement'
   );
-  const { isResponseAvailable: isPractitionerResponseAvailable } = getSupplementaryQuestionnaireContext(
-    serviceRequest,
-    '/practitioner-supplement'
-  );
+  const practitionerQuestionnaire = useSupplementaryQuestionnaireContext(serviceRequest, '/practitioner-supplement');
 
   return (
     <Stack p="xs" m="xs">
       <Title>Actions</Title>
       <Stack>
-        {!isAcceptingPhysicianResponseAvailable ? (
+        {acceptingPhysicianQuestionnaire.isAcceptingResponse() ? (
           <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/accepting-physician-supplement`)}>
             Submit Accepting Physician
           </Button>
         ) : null}
-        {/* FIXME: Check if the practitioner has a questionnaire  */}
-        {!isPractitionerResponseAvailable ? (
+        {practitionerQuestionnaire.isAcceptingResponse() ? (
           <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/practitioner-supplement`)}>
             Submit Physician Form
           </Button>
