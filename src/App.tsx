@@ -42,8 +42,6 @@ function App(): JSX.Element | null {
           children: [{ path: 'ServiceRequest/:id', element: <AssignToRoomPage /> }],
         },
         { path: 'transfers', element: <TransferPage /> },
-        // FIXME: Change path to '/ServiceRequest/:id/practitioner-supplement'
-        { path: 'new-patient/ServiceRequest/:id', element: <SupplementaryQuestionnairePage /> },
         { path: 'new-patient', element: <NewPatientPage /> },
         { path: 'new-physician', element: <NewPhysicianPage /> },
         // { path: 'laboratory', element: <LaboratoryPage /> },
@@ -67,6 +65,7 @@ function App(): JSX.Element | null {
         { path: '/QuestionnaireResponse/:id', element: <QuestionnaireResponsePage /> },
         { path: '/:resourceType/:id/*', element: <ResourcePage /> },
         { path: '/ServiceRequest/:id/accepting-physician-supplement', element: <SupplementaryQuestionnairePage /> },
+        { path: '/ServiceRequest/:id/practitioner-supplement', element: <SupplementaryQuestionnairePage /> },
         { path: '/ServiceRequest/:id/*', element: <ServiceRequestPage /> },
         { path: '/:resourceType/:id', element: <ResourcePage /> },
         { path: '/:resourceType/:id/_history/:versionId', element: <ResourcePage /> },

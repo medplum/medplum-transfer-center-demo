@@ -25,12 +25,12 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
       return { query, display };
     }
 
-    if (pathname.includes('new-patient/ServiceRequest/') && serviceRequest.performer?.length) {
+    if (pathname.includes('/practitioner-supplement') && serviceRequest.performer?.length) {
       query = `context=${resolveId(serviceRequest.performer[0] as Reference<Practitioner>)}`;
       display = 'Physician Supplementary Intake Questionnaire';
     }
 
-    if (pathname.includes('accepting-physician-supplement')) {
+    if (pathname.includes('/accepting-physician-supplement')) {
       query = `_id=${ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID}`;
       display = 'Accepting Physician Supplementary Intake Questionnaire';
     }

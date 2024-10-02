@@ -23,7 +23,7 @@ export function ServiceRequestActions(props: ServiceRequestActionsProps): JSX.El
         <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/accepting-physician-supplement`)}>
           Submit Accepting Physician
         </Button>
-        <Button onClick={() => navigate(`/new-patient/ServiceRequest/${serviceRequest.id}`)}>
+        <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/practitioner-supplement`)}>
           Submit Physician Form
         </Button>{' '}
         <Button onClick={() => setOpenAssignToRoomModal(true)}>Set Call Disposition</Button>
