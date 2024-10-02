@@ -1,6 +1,5 @@
-import { createReference, indexSearchParameterBundle, indexStructureDefinitionBundle } from '@medplum/core';
-import { readJson, SEARCH_PARAMETER_BUNDLE_FILES } from '@medplum/definitions';
-import { Bundle, QuestionnaireResponse, SearchParameter } from '@medplum/fhirtypes';
+import { createReference } from '@medplum/core';
+import { QuestionnaireResponse } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
 import {
   CREATE_LOCATION_LVL_QUESTIONNAIRE_ID,
@@ -13,15 +12,6 @@ describe('Location Lvl Bot', async () => {
   let medplum: MockClient;
   const bot = { reference: 'Bot/123' };
   const contentType = 'application/fhir+json';
-
-  beforeAll(() => {
-    indexStructureDefinitionBundle(readJson('fhir/r4/profiles-types.json') as Bundle);
-    indexStructureDefinitionBundle(readJson('fhir/r4/profiles-resources.json') as Bundle);
-    indexStructureDefinitionBundle(readJson('fhir/r4/profiles-medplum.json') as Bundle);
-    for (const filename of SEARCH_PARAMETER_BUNDLE_FILES) {
-      indexSearchParameterBundle(readJson(filename) as Bundle<SearchParameter>);
-    }
-  });
 
   beforeEach(async () => {
     medplum = new MockClient();
