@@ -30,39 +30,43 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
       return;
     }
 
-    medplum
-      .searchOne('Questionnaire', query)
-      .then((questionnaire) => {
+    const fetchQuestionnaire = async () => {
+      try {
+        const questionnaire = await medplum.searchOne('Questionnaire', query);
+        // If no questionnaire to fill out, redirect to ServiceRequest page for this referral
         if (!questionnaire) {
           console.debug(`No questionnaire found for query: ${query}`);
-          // If no questionnaire to fill out, redirect to ServiceRequest page for this referral
-          navigate(`/ServiceRequest/${serviceRequest.id as string}`);
+          navigate(`/ServiceRequest/${serviceRequest.id}`);
           return;
         }
         setCurrentQuestionnaire(createReference<Questionnaire>(questionnaire));
-      })
-      .catch(console.error);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchQuestionnaire();
   }, [medplum, navigate, id, serviceRequest, isResponseAvailable, query]);
 
   const handleSubmit = useCallback(
-    (response: QuestionnaireResponse) => {
+    async (response: QuestionnaireResponse) => {
       if (!serviceRequest || !currentQuestionnaire?.reference) {
         return;
       }
-      medplum
-        .createResource({ ...response })
-        .then(async (completedResponse) => {
-          await medplum.patchResource('ServiceRequest', serviceRequest.id as string, [
-            {
-              op: 'add',
-              path: '/supportingInfo/1',
-              value: { ...createReference(completedResponse), display: display },
-            },
-          ]);
-          navigate(`/ServiceRequest/${serviceRequest.id as string}`);
-          return;
-        })
-        .catch(console.error);
+
+      try {
+        const completedResponse = await medplum.createResource({ ...response });
+        await medplum.patchResource('ServiceRequest', serviceRequest.id as string, [
+          {
+            op: 'add',
+            path: '/supportingInfo/-',
+            value: { ...createReference(completedResponse), display },
+          },
+        ]);
+        navigate(`/ServiceRequest/${serviceRequest.id}`);
+      } catch (error) {
+        console.error(error);
+      }
     },
     [serviceRequest, currentQuestionnaire?.reference, medplum, display, navigate]
   );
