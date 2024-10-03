@@ -83,7 +83,7 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
       {serviceRequest && questionnaire ? (
         <QuestionnaireForm
           subject={createReference(serviceRequest)}
-          questionnaire={createReference(questionnaire)}
+          questionnaire={questionnaire}
           onSubmit={handleSubmit}
         />
       ) : (
