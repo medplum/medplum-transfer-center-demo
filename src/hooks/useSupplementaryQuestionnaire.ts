@@ -56,6 +56,7 @@ export function useSupplementaryQuestionnaire(
       return fetchedQuestionnaire;
     } catch (error) {
       console.error(error);
+      return undefined;
     }
   }, [medplum, serviceRequest, type]);
 

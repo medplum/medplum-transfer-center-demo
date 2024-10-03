@@ -25,6 +25,7 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
     } else if (pathname.endsWith('/practitioner-supplement')) {
       return 'practitioner';
     }
+    return undefined;
   }, [pathname]);
   const { fetchQuestionnaire, isAcceptingResponse, getDisplay } = useSupplementaryQuestionnaire(
     serviceRequest as ServiceRequest,

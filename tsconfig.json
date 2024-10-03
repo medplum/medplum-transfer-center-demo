@@ -1,30 +1,35 @@
 {
+  "$schema": "http://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ESNext",
-    "useDefineForClassFields": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "target": "ES2021",
     "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "moduleResolution": "node",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["vitest/globals"],
-
-    /* Linting */
+    "newLine": "lf",
     "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": false,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["vitest/globals"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts", "bots"]
-  // Remove the reference to tsconfig.node.json
-  // "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "scripts", "bots"],
+  "exclude": ["node_modules", "**/dist/*"]
 }
