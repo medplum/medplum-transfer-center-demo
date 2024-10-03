@@ -27,7 +27,6 @@ export function TasksTab(props: TasksTabProps): JSX.Element {
     <SearchControl
       search={search}
       hideToolbar={true}
-      onLoad={(e) => console.log('onLoad', e)}
       onClick={(e) => navigate(`/${getReferenceString(e.resource)}`)}
       onAuxClick={(e) => navigate(`/${getReferenceString(e.resource)}`)}
     />

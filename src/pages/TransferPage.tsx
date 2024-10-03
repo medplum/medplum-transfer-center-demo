@@ -2,7 +2,7 @@ import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/Fh
 import { Button, Container, Title } from '@mantine/core';
 import { PropertyType } from '@medplum/core';
 import { Location, Reference } from '@medplum/fhirtypes';
-import { ReferenceDisplay, useMedplumNavigate } from '@medplum/react';
+import { ReferenceDisplay, ResourcePropertyDisplay, useMedplumNavigate } from '@medplum/react';
 import { useMemo } from 'react';
 
 const serviceReqQuery = `{
@@ -73,6 +73,14 @@ export function TransferPage(): JSX.Element {
         name: 'Primary Accepting Physician',
         fhirPath: 'performer.display',
         propertyType: PropertyType.string,
+        render: ({ resource, value }) =>
+          value ? (
+            <ResourcePropertyDisplay value={value} propertyType={PropertyType.string} />
+          ) : (
+            <Button onClick={() => navigate(`/ServiceRequest/${resource.id}/accepting-physician-supplement`)}>
+              Complete
+            </Button>
+          ),
       },
       {
         name: 'Location',

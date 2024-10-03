@@ -1,75 +1,91 @@
 import { Container } from '@mantine/core';
-import { createReference, resolveId } from '@medplum/core';
-
-import { Practitioner, Questionnaire, QuestionnaireResponse, Reference, ServiceRequest } from '@medplum/fhirtypes';
+import { createReference } from '@medplum/core';
+import { Questionnaire, QuestionnaireResponse, ServiceRequest } from '@medplum/fhirtypes';
 import { Loading, QuestionnaireForm, useMedplum, useMedplumNavigate, useResource } from '@medplum/react';
-import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
+import { useSupplementaryQuestionnaire } from '@/hooks/useSupplementaryQuestionnaire';
 
 export function SupplementaryQuestionnairePage(): JSX.Element {
   const medplum = useMedplum();
   const navigate = useMedplumNavigate();
   const { id } = useParams();
+  const { pathname } = useLocation();
+
+  const [questionnaire, setQuestionnaire] = useState<Questionnaire | undefined>(undefined);
+  const [isQuestionnaireAcceptingResponse, setIsQuestionnaireAcceptingResponse] = useState<boolean | undefined>(
+    undefined
+  );
 
   const serviceRequest = useResource<ServiceRequest>({ reference: `ServiceRequest/${id}` });
 
-  const [currentQuestionnaire, setCurrentQuestionnaire] = useState<Reference<Questionnaire>>();
+  const questionnaireType = useMemo(() => {
+    if (pathname.endsWith('/accepting-physician-supplement')) {
+      return 'acceptingPhysician';
+    } else if (pathname.endsWith('/practitioner-supplement')) {
+      return 'practitioner';
+    }
+    return undefined;
+  }, [pathname]);
+  const { fetchQuestionnaire, isAcceptingResponse, getDisplay } = useSupplementaryQuestionnaire(
+    serviceRequest as ServiceRequest,
+    questionnaireType as 'acceptingPhysician' | 'practitioner'
+  );
 
   useEffect(() => {
     if (!serviceRequest) {
       return;
     }
-    if (!serviceRequest.performer) {
-      console.error(`Invalid ServiceRequest for ServiceRequest with id '${id}'`);
-      return;
+
+    async function loadQuestionnaire() {
+      setQuestionnaire(await fetchQuestionnaire());
     }
-    // If this questionnaire has already been filled out,
-    // Redirect to the
-    if (serviceRequest?.supportingInfo?.[1]) {
-      navigate(`/ServiceRequest/${serviceRequest.id as string}`);
+
+    async function loadIsAcceptingResponse() {
+      setIsQuestionnaireAcceptingResponse(await isAcceptingResponse());
     }
-    medplum
-      .searchOne('Questionnaire', `context=${resolveId(serviceRequest.performer[0] as Reference<Practitioner>) ?? ''}`)
-      .then((questionnaire) => {
-        if (!questionnaire) {
-          console.debug(`No questionnaire for given performer: ${serviceRequest.performer}`);
-          // If no questionnaire to fill out,
-          // Then redirect to ServiceRequest page for this referral
-          navigate(`/ServiceRequest/${serviceRequest.id as string}`);
-          return;
-        }
-        setCurrentQuestionnaire(createReference<Questionnaire>(questionnaire));
-      })
-      .catch(console.error);
-  }, [medplum, navigate, id, serviceRequest]);
+
+    loadQuestionnaire();
+    loadIsAcceptingResponse();
+
+    // If the questionnaire is not accepting a response, redirect to ServiceRequest page
+    if (serviceRequest && isQuestionnaireAcceptingResponse === false) {
+      navigate(`/ServiceRequest/${serviceRequest.id}`);
+    }
+  }, [fetchQuestionnaire, isAcceptingResponse, isQuestionnaireAcceptingResponse, navigate, serviceRequest]);
 
   const handleSubmit = useCallback(
-    (response: QuestionnaireResponse) => {
-      if (!serviceRequest || !currentQuestionnaire?.reference) {
+    async (response: QuestionnaireResponse) => {
+      if (!serviceRequest || !questionnaire) {
         return;
       }
-      medplum
-        .createResource({ ...response })
-        .then(async (completedResponse) => {
-          await medplum.patchResource('ServiceRequest', serviceRequest.id as string, [
-            {
-              op: 'add',
-              path: '/supportingInfo/1',
-              value: { ...createReference(completedResponse), display: 'Supplementary Questionnaire' },
-            },
-          ]);
-          navigate(`/ServiceRequest/${serviceRequest.id as string}`);
-          return;
-        })
-        .catch(console.error);
+
+      try {
+        const completedResponse = await medplum.createResource({ ...response });
+        const questionnaireDisplay = getDisplay();
+        await medplum.patchResource('ServiceRequest', serviceRequest.id as string, [
+          {
+            op: 'add',
+            path: '/supportingInfo/-',
+            value: { ...createReference(completedResponse), display: questionnaireDisplay },
+          },
+        ]);
+        navigate(`/ServiceRequest/${serviceRequest.id}`);
+      } catch (error) {
+        console.error(error);
+      }
     },
-    [medplum, navigate, currentQuestionnaire?.reference, serviceRequest]
+    [getDisplay, medplum, navigate, questionnaire, serviceRequest]
   );
 
   return (
     <Container fluid>
-      {currentQuestionnaire ? (
-        <QuestionnaireForm questionnaire={currentQuestionnaire} onSubmit={handleSubmit} />
+      {serviceRequest && questionnaire ? (
+        <QuestionnaireForm
+          subject={createReference(serviceRequest)}
+          questionnaire={createReference(questionnaire)}
+          onSubmit={handleSubmit}
+        />
       ) : (
         <Loading />
       )}
