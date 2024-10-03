@@ -1,10 +1,10 @@
 import { Container } from '@mantine/core';
 import { createReference } from '@medplum/core';
-import { QuestionnaireResponse, ServiceRequest } from '@medplum/fhirtypes';
+import { Questionnaire, QuestionnaireResponse, ServiceRequest } from '@medplum/fhirtypes';
 import { Loading, QuestionnaireForm, useMedplum, useMedplumNavigate, useResource } from '@medplum/react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { useSupplementaryQuestionnaireContext } from '@/hooks/useSupplementaryQuestionnaireContext';
+import { useSupplementaryQuestionnaire } from '@/hooks/useSupplementaryQuestionnaire';
 
 export function SupplementaryQuestionnairePage(): JSX.Element {
   const medplum = useMedplum();
@@ -12,11 +12,23 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
   const { id } = useParams();
   const { pathname } = useLocation();
 
+  const [questionnaire, setQuestionnaire] = useState<Questionnaire | undefined>(undefined);
+  const [isQuestionnaireAcceptingResponse, setIsQuestionnaireAcceptingResponse] = useState<boolean | undefined>(
+    undefined
+  );
+
   const serviceRequest = useResource<ServiceRequest>({ reference: `ServiceRequest/${id}` });
 
-  const { questionnaire, isAcceptingResponse, display } = useSupplementaryQuestionnaireContext(
-    serviceRequest,
-    pathname
+  const questionnaireType = useMemo(() => {
+    if (pathname.endsWith('/accepting-physician-supplement')) {
+      return 'acceptingPhysician';
+    } else if (pathname.endsWith('/practitioner-supplement')) {
+      return 'practitioner';
+    }
+  }, [pathname]);
+  const { fetchQuestionnaire, isAcceptingResponse, getDisplay } = useSupplementaryQuestionnaire(
+    serviceRequest as ServiceRequest,
+    questionnaireType as 'acceptingPhysician' | 'practitioner'
   );
 
   useEffect(() => {
@@ -24,10 +36,22 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
       return;
     }
 
-    if (!isAcceptingResponse()) {
-      navigate(`/ServiceRequest/${serviceRequest.id as string}`);
+    async function loadQuestionnaire() {
+      setQuestionnaire(await fetchQuestionnaire());
     }
-  }, [isAcceptingResponse, navigate, serviceRequest]);
+
+    async function loadIsAcceptingResponse() {
+      setIsQuestionnaireAcceptingResponse(await isAcceptingResponse());
+    }
+
+    loadQuestionnaire();
+    loadIsAcceptingResponse();
+
+    // If the questionnaire is not accepting a response, redirect to ServiceRequest page
+    if (serviceRequest && isQuestionnaireAcceptingResponse === false) {
+      navigate(`/ServiceRequest/${serviceRequest.id}`);
+    }
+  }, [fetchQuestionnaire, isAcceptingResponse, isQuestionnaireAcceptingResponse, navigate, serviceRequest]);
 
   const handleSubmit = useCallback(
     async (response: QuestionnaireResponse) => {
@@ -37,11 +61,12 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
 
       try {
         const completedResponse = await medplum.createResource({ ...response });
+        const questionnaireDisplay = getDisplay();
         await medplum.patchResource('ServiceRequest', serviceRequest.id as string, [
           {
             op: 'add',
             path: '/supportingInfo/-',
-            value: { ...createReference(completedResponse), display },
+            value: { ...createReference(completedResponse), display: questionnaireDisplay },
           },
         ]);
         navigate(`/ServiceRequest/${serviceRequest.id}`);
@@ -49,7 +74,7 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
         console.error(error);
       }
     },
-    [display, medplum, navigate, questionnaire, serviceRequest]
+    [getDisplay, medplum, navigate, questionnaire, serviceRequest]
   );
 
   return (

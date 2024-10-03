@@ -1,10 +1,10 @@
 import { Button, Stack, Title } from '@mantine/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AssignToRoomModal } from '@/components/actions/AssignToRoomModal';
 import { AddServiceRequestNoteModal } from '@/components/actions/AddServiceRequestNoteModal';
 import { ServiceRequest } from '@medplum/fhirtypes';
 import { useNavigate } from 'react-router-dom';
-import { useSupplementaryQuestionnaireContext } from '@/hooks/useSupplementaryQuestionnaireContext';
+import { useSupplementaryQuestionnaire } from '@/hooks/useSupplementaryQuestionnaire';
 
 interface ServiceRequestActionsProps {
   serviceRequest: ServiceRequest;
@@ -16,22 +16,34 @@ export function ServiceRequestActions(props: ServiceRequestActionsProps): JSX.El
   const [openAssignToRoomModal, setOpenAssignToRoomModal] = useState(false);
   const navigate = useNavigate();
 
-  const acceptingPhysicianQuestionnaire = useSupplementaryQuestionnaireContext(
-    serviceRequest,
-    '/accepting-physician-supplement'
-  );
-  const practitionerQuestionnaire = useSupplementaryQuestionnaireContext(serviceRequest, '/practitioner-supplement');
+  const [showAcceptingPhysicianButton, setShowAcceptingPhysicianButton] = useState<boolean | undefined>(undefined);
+  const [showPractitionerButton, setShowPractitionerButton] = useState<boolean | undefined>(undefined);
+
+  const acceptingPhysicianQuestionnaire = useSupplementaryQuestionnaire(serviceRequest, 'acceptingPhysician');
+  const practitionerQuestionnaire = useSupplementaryQuestionnaire(serviceRequest, 'practitioner');
+
+  useEffect(() => {
+    async function loadIsAcceptingResponse() {
+      const isAcceptingPhysicianResponse = await acceptingPhysicianQuestionnaire.isAcceptingResponse();
+      const isPractitionerResponse = await practitionerQuestionnaire.isAcceptingResponse();
+
+      setShowAcceptingPhysicianButton(isAcceptingPhysicianResponse);
+      setShowPractitionerButton(isPractitionerResponse);
+    }
+
+    loadIsAcceptingResponse();
+  }, [acceptingPhysicianQuestionnaire, practitionerQuestionnaire]);
 
   return (
     <Stack p="xs" m="xs">
       <Title>Actions</Title>
       <Stack>
-        {acceptingPhysicianQuestionnaire.isAcceptingResponse() ? (
+        {showAcceptingPhysicianButton ? (
           <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/accepting-physician-supplement`)}>
             Submit Accepting Physician
           </Button>
         ) : null}
-        {practitionerQuestionnaire.isAcceptingResponse() ? (
+        {showPractitionerButton ? (
           <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/practitioner-supplement`)}>
             Submit Physician Form
           </Button>
