@@ -4,6 +4,12 @@ import { useMedplum } from '@medplum/react';
 import { useCallback } from 'react';
 import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID } from '@/lib/common';
 
+/**
+ * Custom hook for handling supplementary questionnaires.
+ *
+ * @param serviceRequest - The ServiceRequest object.
+ * @param type - The type of questionnaire to fetch.
+ */
 export function useSupplementaryQuestionnaire(
   serviceRequest: ServiceRequest,
   type: 'acceptingPhysician' | 'practitioner'
@@ -14,7 +20,12 @@ export function useSupplementaryQuestionnaire(
 } {
   const medplum = useMedplum();
 
-  const getDisplay = useCallback(() => {
+  /**
+   * Get the display name of the questionnaire.
+   *
+   * @returns The display name of the questionnaire or undefined.
+   */
+  const getDisplay = useCallback((): string | undefined => {
     if (type === 'practitioner' && serviceRequest.performer?.length) {
       return 'Physician Supplementary Intake Questionnaire';
     } else if (type === 'acceptingPhysician') {
@@ -23,7 +34,12 @@ export function useSupplementaryQuestionnaire(
     return undefined;
   }, [serviceRequest, type]);
 
-  const fetchQuestionnaire = useCallback(async () => {
+  /**
+   * Fetch the questionnaire based on the type and service request.
+   *
+   * @returns The fetched questionnaire or undefined.
+   */
+  const fetchQuestionnaire = useCallback(async (): Promise<Questionnaire | undefined> => {
     try {
       let query: string | undefined;
       if (type === 'practitioner' && serviceRequest.performer?.length) {
@@ -43,6 +59,11 @@ export function useSupplementaryQuestionnaire(
     }
   }, [medplum, serviceRequest, type]);
 
+  /**
+   * Check if the questionnaire is accepting responses.
+   *
+   * @returns True if the questionnaire is accepting a response, otherwise false.
+   */
   const isAcceptingResponse = useCallback(async () => {
     const questionnaire = await fetchQuestionnaire();
 
