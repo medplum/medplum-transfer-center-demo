@@ -77,7 +77,7 @@ export function TransferPage(): JSX.Element {
           value ? (
             <ResourcePropertyDisplay value={value} propertyType={PropertyType.string} />
           ) : (
-            <Button onClick={() => navigate(`/ServiceRequest/${resource.id}/accepting-physician-supplement`)}>
+            <Button onClick={() => navigate(`/ServiceRequest/${resource.id}/accepting-physician`)}>
               Complete
             </Button>
           ),

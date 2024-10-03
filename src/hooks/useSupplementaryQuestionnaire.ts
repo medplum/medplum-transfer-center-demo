@@ -12,7 +12,7 @@ import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID } from '@/lib/common';
  */
 export function useSupplementaryQuestionnaire(
   serviceRequest: ServiceRequest,
-  type: 'acceptingPhysician' | 'practitioner'
+  type: 'acceptingPhysician' | 'physician'
 ): {
   fetchQuestionnaire: () => Promise<Questionnaire | undefined>;
   isAcceptingResponse: () => Promise<boolean>;
@@ -26,7 +26,7 @@ export function useSupplementaryQuestionnaire(
    * @returns The display name of the questionnaire or undefined.
    */
   const getDisplay = useCallback((): string | undefined => {
-    if (type === 'practitioner' && serviceRequest.performer?.length) {
+    if (type === 'physician' && serviceRequest.performer?.length) {
       return 'Physician Supplementary Intake Questionnaire';
     } else if (type === 'acceptingPhysician') {
       return 'Accepting Physician Supplementary Intake Questionnaire';
@@ -42,7 +42,7 @@ export function useSupplementaryQuestionnaire(
   const fetchQuestionnaire = useCallback(async (): Promise<Questionnaire | undefined> => {
     try {
       let query: string | undefined;
-      if (type === 'practitioner' && serviceRequest.performer?.length) {
+      if (type === 'physician' && serviceRequest.performer?.length) {
         query = `context=${resolveId(serviceRequest.performer[0] as Reference<Practitioner>)}`;
       } else if (type === 'acceptingPhysician') {
         query = `_id=${ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID}`;

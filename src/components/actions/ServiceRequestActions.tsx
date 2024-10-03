@@ -17,34 +17,34 @@ export function ServiceRequestActions(props: ServiceRequestActionsProps): JSX.El
   const navigate = useNavigate();
 
   const [showAcceptingPhysicianButton, setShowAcceptingPhysicianButton] = useState<boolean | undefined>(undefined);
-  const [showPractitionerButton, setShowPractitionerButton] = useState<boolean | undefined>(undefined);
+  const [showPhysicianButton, setShowPhysicianButton] = useState<boolean | undefined>(undefined);
 
   const acceptingPhysicianQuestionnaire = useSupplementaryQuestionnaire(serviceRequest, 'acceptingPhysician');
-  const practitionerQuestionnaire = useSupplementaryQuestionnaire(serviceRequest, 'practitioner');
+  const physicianQuestionnaire = useSupplementaryQuestionnaire(serviceRequest, 'physician');
 
   useEffect(() => {
     async function loadIsAcceptingResponse() {
       const isAcceptingPhysicianResponse = await acceptingPhysicianQuestionnaire.isAcceptingResponse();
-      const isPractitionerResponse = await practitionerQuestionnaire.isAcceptingResponse();
+      const isPhysicianResponse = await physicianQuestionnaire.isAcceptingResponse();
 
       setShowAcceptingPhysicianButton(isAcceptingPhysicianResponse);
-      setShowPractitionerButton(isPractitionerResponse);
+      setShowPhysicianButton(isPhysicianResponse);
     }
 
     loadIsAcceptingResponse();
-  }, [acceptingPhysicianQuestionnaire, practitionerQuestionnaire]);
+  }, [acceptingPhysicianQuestionnaire, physicianQuestionnaire]);
 
   return (
     <Stack p="xs" m="xs">
       <Title>Actions</Title>
       <Stack>
         {showAcceptingPhysicianButton ? (
-          <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/accepting-physician-supplement`)}>
+          <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/accepting-physician`)}>
             Submit Accepting Physician
           </Button>
         ) : null}
-        {showPractitionerButton ? (
-          <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/practitioner-supplement`)}>
+        {showPhysicianButton ? (
+          <Button onClick={() => navigate(`/ServiceRequest/${serviceRequest.id}/physician-supplement`)}>
             Submit Physician Form
           </Button>
         ) : null}

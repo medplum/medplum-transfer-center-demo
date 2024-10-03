@@ -20,16 +20,16 @@ export function SupplementaryQuestionnairePage(): JSX.Element {
   const serviceRequest = useResource<ServiceRequest>({ reference: `ServiceRequest/${id}` });
 
   const questionnaireType = useMemo(() => {
-    if (pathname.endsWith('/accepting-physician-supplement')) {
+    if (pathname.endsWith('/accepting-physician')) {
       return 'acceptingPhysician';
-    } else if (pathname.endsWith('/practitioner-supplement')) {
-      return 'practitioner';
+    } else if (pathname.endsWith('/physician-supplement')) {
+      return 'physician';
     }
     return undefined;
   }, [pathname]);
   const { fetchQuestionnaire, isAcceptingResponse, getDisplay } = useSupplementaryQuestionnaire(
     serviceRequest as ServiceRequest,
-    questionnaireType as 'acceptingPhysician' | 'practitioner'
+    questionnaireType as 'acceptingPhysician' | 'physician'
   );
 
   useEffect(() => {
