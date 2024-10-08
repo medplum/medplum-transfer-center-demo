@@ -1,7 +1,6 @@
+import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 import { MedplumClient, BotEvent, getQuestionnaireAnswers, resolveId } from '@medplum/core';
 import { QuestionnaireResponse } from '@medplum/fhirtypes';
-
-export const ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID = 'c74d9c82-3aca-42f8-a687-c38c9b990912';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
   const { input } = event;
@@ -10,7 +9,16 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Invalid input');
   }
 
-  if (input.questionnaire !== `Questionnaire/${ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID}`) {
+  if (!input.questionnaire) {
+    throw new Error('Questionnaire is required');
+  }
+
+  const questionnaire = await medplum.readResource(
+    'Questionnaire',
+    resolveId({ reference: input.questionnaire }) as string
+  );
+
+  if (questionnaire.name !== ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME) {
     throw new Error('Invalid questionnaire');
   }
 

@@ -4,6 +4,7 @@ import { ServiceRequest, Questionnaire } from '@medplum/fhirtypes';
 import { MedplumProvider } from '@medplum/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useSupplementaryQuestionnaire } from '@/hooks/useSupplementaryQuestionnaire';
+import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
 // Mocks
 let mockServiceRequestWithPerformer: ServiceRequest = {
@@ -19,6 +20,13 @@ let mockServiceRequestWithoutPerformer: ServiceRequest = {
   status: 'active',
   intent: 'proposal',
   subject: { reference: 'Patient/123' },
+};
+
+let mockAcceptingPhysicianQuestionnaire: Questionnaire = {
+  resourceType: 'Questionnaire',
+  title: 'Mock Accepting Physician Questionnaire',
+  status: 'active',
+  name: ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME,
 };
 
 let mockPractitionerQuestionnaire: Questionnaire = {
@@ -52,6 +60,7 @@ describe('useSupplementaryQuestionnaire', () => {
     medplum = new MockClient();
     mockServiceRequestWithPerformer = await medplum.createResource(mockServiceRequestWithPerformer);
     mockServiceRequestWithoutPerformer = await medplum.createResource(mockServiceRequestWithoutPerformer);
+    mockAcceptingPhysicianQuestionnaire = await medplum.createResource(mockAcceptingPhysicianQuestionnaire);
     mockPractitionerQuestionnaire = await medplum.createResource(mockPractitionerQuestionnaire);
   });
 
@@ -65,10 +74,9 @@ describe('useSupplementaryQuestionnaire', () => {
 
   describe('getDisplay', () => {
     it('returns correct display for practitioner type with performer', () => {
-      const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer, 'practitioner'),
-        { wrapper }
-      );
+      const { result } = renderHook(() => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer, 'physician'), {
+        wrapper,
+      });
 
       expect(result.current.getDisplay()).toBe('Physician Supplementary Intake Questionnaire');
     });
@@ -84,7 +92,7 @@ describe('useSupplementaryQuestionnaire', () => {
 
     it('returns undefined for practitioner type without performer', () => {
       const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(mockServiceRequestWithoutPerformer, 'practitioner'),
+        () => useSupplementaryQuestionnaire(mockServiceRequestWithoutPerformer, 'physician'),
         { wrapper }
       );
 
@@ -94,10 +102,9 @@ describe('useSupplementaryQuestionnaire', () => {
 
   describe('fetchQuestionnaire', () => {
     it('fetches questionnaire for practitioner type with performer', async () => {
-      const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer, 'practitioner'),
-        { wrapper }
-      );
+      const { result } = renderHook(() => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer, 'physician'), {
+        wrapper,
+      });
 
       await act(async () => {
         const questionnaire = await result.current.fetchQuestionnaire();
@@ -106,14 +113,6 @@ describe('useSupplementaryQuestionnaire', () => {
     });
 
     it('fetches questionnaire for acceptingPhysician type', async () => {
-      // This is being mocked because it is queried by id
-      const mockAcceptingPhysicianQuestionnaire: Questionnaire = await medplum.createResource({
-        resourceType: 'Questionnaire',
-        title: 'Mock Accepting Physician Questionnaire',
-        status: 'active',
-      });
-      medplum.searchOne = vi.fn().mockResolvedValue(mockAcceptingPhysicianQuestionnaire);
-
       const { result } = renderHook(
         () => useSupplementaryQuestionnaire(mockServiceRequestWithoutPerformer, 'acceptingPhysician'),
         { wrapper }
@@ -127,7 +126,7 @@ describe('useSupplementaryQuestionnaire', () => {
 
     it('returns undefined for practitioner type without performer', async () => {
       const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(mockServiceRequestWithoutPerformer, 'practitioner'),
+        () => useSupplementaryQuestionnaire(mockServiceRequestWithoutPerformer, 'physician'),
         { wrapper }
       );
 
@@ -144,7 +143,7 @@ describe('useSupplementaryQuestionnaire', () => {
       });
 
       const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer2, 'practitioner'),
+        () => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer2, 'physician'),
         { wrapper }
       );
 
@@ -157,10 +156,9 @@ describe('useSupplementaryQuestionnaire', () => {
 
   describe('isAcceptingResponse', () => {
     it('returns true when questionnaire exists and is not in supportingInfo', async () => {
-      const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer, 'practitioner'),
-        { wrapper }
-      );
+      const { result } = renderHook(() => useSupplementaryQuestionnaire(mockServiceRequestWithPerformer, 'physician'), {
+        wrapper,
+      });
 
       await act(async () => {
         const isAccepting = await result.current.isAcceptingResponse();
@@ -175,7 +173,7 @@ describe('useSupplementaryQuestionnaire', () => {
       });
 
       const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(serviceRequestWithSupportingInfo, 'practitioner'),
+        () => useSupplementaryQuestionnaire(serviceRequestWithSupportingInfo, 'physician'),
         { wrapper }
       );
 
@@ -187,7 +185,7 @@ describe('useSupplementaryQuestionnaire', () => {
 
     it('returns false when questionnaire does not exist', async () => {
       const { result } = renderHook(
-        () => useSupplementaryQuestionnaire(mockServiceRequestWithoutPerformer, 'acceptingPhysician'),
+        () => useSupplementaryQuestionnaire(mockServiceRequestWithoutPerformer, 'physician'),
         { wrapper }
       );
 

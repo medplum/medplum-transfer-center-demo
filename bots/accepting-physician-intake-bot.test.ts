@@ -1,10 +1,12 @@
-import { createReference, resolveId } from '@medplum/core';
-import { QuestionnaireResponse, ServiceRequest, Task } from '@medplum/fhirtypes';
+import { createReference, getReferenceString, resolveId } from '@medplum/core';
+import { Questionnaire, QuestionnaireResponse, ServiceRequest, Task } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
-import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID, handler } from './accepting-physician-intake-bot';
+import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
+import { handler } from './accepting-physician-intake-bot';
 
 describe('Accepting Physician Intake Bot', async () => {
   let medplum: MockClient;
+  let questionnaire: Questionnaire;
   let serviceRequest: ServiceRequest;
   let task: Task;
   const bot = { reference: 'Bot/123' };
@@ -14,6 +16,38 @@ describe('Accepting Physician Intake Bot', async () => {
 
   beforeEach(async () => {
     medplum = new MockClient();
+    questionnaire = await medplum.createResource({
+      resourceType: 'Questionnaire',
+      title: 'Accepting Physician Form',
+      name: ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME,
+      status: 'active',
+      item: [
+        {
+          linkId: 'acceptingSpecialty',
+          type: 'choice',
+          text: 'Accepting Specialty',
+          answerValueSet: 'https://haysmed.com/fhir/ValueSet/accepting-specialties',
+        },
+        {
+          linkId: 'startingLocation',
+          type: 'choice',
+          text: 'Starting Location',
+          answerValueSet: 'https://haysmed.com/fhir/ValueSet/starting-locations',
+        },
+        {
+          linkId: 'primaryAcceptingPhysician',
+          type: 'reference',
+          text: 'Primary Accepting Physician',
+          extension: [
+            {
+              url: 'http://hl7.org/fhir/StructureDefinition/questionnaire-referenceResource',
+              valueCode: 'Practitioner',
+            },
+          ],
+          required: true,
+        },
+      ],
+    });
     serviceRequest = await medplum.createResource({
       resourceType: 'ServiceRequest',
       code: {
@@ -38,7 +72,7 @@ describe('Accepting Physician Intake Bot', async () => {
     const input: QuestionnaireResponse = {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
-      questionnaire: `Questionnaire/${ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID}`,
+      questionnaire: getReferenceString(questionnaire),
       subject: createReference(serviceRequest),
       item: [
         {
@@ -93,12 +127,39 @@ describe('Accepting Physician Intake Bot', async () => {
     expect(updatedTask?.owner).toEqual(physician);
   });
 
+  it('throws error on missing questionnaire', async () => {
+    const input: QuestionnaireResponse = {
+      resourceType: 'QuestionnaireResponse',
+      status: 'completed',
+    };
+
+    await expect(async () => {
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+    }).rejects.toThrow('Questionnaire is required');
+  });
+
+  it('throws error on invalid questionnaire', async () => {
+    const otherQuestionnaire = await medplum.createResource({
+      resourceType: 'Questionnaire',
+      title: 'Other Questionnaire',
+      status: 'active',
+    });
+    const input: QuestionnaireResponse = {
+      resourceType: 'QuestionnaireResponse',
+      status: 'completed',
+      questionnaire: getReferenceString(otherQuestionnaire),
+    };
+
+    await expect(async () => {
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+    }).rejects.toThrow('Invalid questionnaire');
+  });
+
   it('throws error on missing service request', async () => {
     const input: QuestionnaireResponse = {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
-      questionnaire: `Questionnaire/${ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID}`,
-      item: [],
+      questionnaire: getReferenceString(questionnaire),
     };
 
     await expect(async () => {
@@ -110,7 +171,7 @@ describe('Accepting Physician Intake Bot', async () => {
     const input: QuestionnaireResponse = {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
-      questionnaire: `Questionnaire/${ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_ID}`,
+      questionnaire: getReferenceString(questionnaire),
       subject: createReference(serviceRequest),
       item: [
         {
