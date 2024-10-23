@@ -28,7 +28,7 @@ export interface FhirPathTableProps<T extends Resource = Resource> {
 
 export interface SmartSearchResponse {
   readonly data: {
-    ResourceList: Resource[];
+    ResourceList: Resource[] | null;
   };
 }
 
@@ -177,7 +177,7 @@ export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTabl
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {response?.data.ResourceList.map(
+          {response?.data?.ResourceList?.map(
             (resource) =>
               resource && (
                 <Table.Tr
@@ -223,7 +223,7 @@ export function FhirPathTable<T extends Resource = Resource>(props: FhirPathTabl
           )}
         </Table.Tbody>
       </Table>
-      {response?.data.ResourceList.length === 0 && <div data-testid="empty-search">No results</div>}
+      {!response?.data?.ResourceList?.length && <div data-testid="empty-search">No results</div>}
       {outcome && (
         <div data-testid="search-error">
           <pre style={{ textAlign: 'left' }}>{JSON.stringify(outcome, undefined, 2)}</pre>
