@@ -6,7 +6,7 @@ import { ReferenceDisplay, ResourcePropertyDisplay, useMedplumNavigate } from '@
 import { useMemo } from 'react';
 
 const serviceReqQuery = `{
-  ResourceList: ServiceRequestList(code: "http://snomed.info/sct|19712007", authored: "gt01-01-70", _sort: "-authored", _count: 13) {
+  ResourceList: ServiceRequestList(code: "http://snomed.info/sct|19712007", authored: "gt1970-01-01", _sort: "-authored", _count: 13) {
     id,
     authoredOn,
     subject {
@@ -77,9 +77,7 @@ export function TransferPage(): JSX.Element {
           value ? (
             <ResourcePropertyDisplay value={value} propertyType={PropertyType.string} />
           ) : (
-            <Button onClick={() => navigate(`/ServiceRequest/${resource.id}/accepting-physician`)}>
-              Complete
-            </Button>
+            <Button onClick={() => navigate(`/ServiceRequest/${resource.id}/accepting-physician`)}>Complete</Button>
           ),
       },
       {
