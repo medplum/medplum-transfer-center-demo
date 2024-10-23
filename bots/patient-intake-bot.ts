@@ -8,6 +8,7 @@ import {
   QuestionnaireResponseItemAnswer,
   Reference,
 } from '@medplum/fhirtypes';
+import { HAYS_MED_REQUISITION_SYSTEM } from '@/lib/common';
 
 type PatientLinkId = 'firstName' | 'lastName' | 'birthdate' | 'diagnosis' | 'chiefComplaint';
 type TransferLinkId = 'transferOrigin' | 'transferFacility';
@@ -21,8 +22,6 @@ type ParsedResults = {
   transferringFacility: Reference | undefined;
   requisitionId: string;
 };
-
-const HAYS_MED_REQUISITION_SYSTEM = 'https://haysmed.com/fhir/requisition-id';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
   const results = {
