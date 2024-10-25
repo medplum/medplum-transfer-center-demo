@@ -5,6 +5,7 @@ export const HAYS_MED_LOCATION_ID = 'ba836894-122f-42d0-874b-83ea9557e4f3';
 
 export const HAYS_MED_REQUISITION_SYSTEM = 'https://haysmed.com/fhir/requisition-id';
 
+export const PATIENT_INTAKE_QUESTIONNAIRE_NAME = 'patient-intake-questionnaire';
 export const ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME = 'accepting-physician-intake-questionnaire';
 
 export const PAPER_PROPS: PaperProps = {

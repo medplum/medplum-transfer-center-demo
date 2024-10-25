@@ -1,4 +1,4 @@
-import { BotEvent, MedplumClient, createReference, getQuestionnaireAnswers } from '@medplum/core';
+import { BotEvent, MedplumClient, createReference, getQuestionnaireAnswers, resolveId } from '@medplum/core';
 import {
   HumanName,
   Organization,
@@ -8,9 +8,9 @@ import {
   QuestionnaireResponseItemAnswer,
   Reference,
 } from '@medplum/fhirtypes';
-import { HAYS_MED_REQUISITION_SYSTEM } from '@/lib/common';
+import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
-type PatientLinkId = 'firstName' | 'lastName' | 'birthdate' | 'diagnosis' | 'chiefComplaint';
+type PatientLinkId = 'firstName' | 'lastName' | 'birthdate' | 'phone' | 'diagnosis' | 'chiefComplaint';
 type TransferLinkId = 'transferOrigin' | 'transferFacility';
 type TransferPhysLinkId = 'transferPhysFirst' | 'transferPhysLast' | 'transferPhysQual' | 'transferPhysPhone';
 type ValidLinkId = PatientLinkId | TransferLinkId | TransferPhysLinkId | 'dateTime' | 'requisitionId';
@@ -24,17 +24,31 @@ type ParsedResults = {
 };
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
+  const { input } = event;
+
+  if (input.resourceType !== 'QuestionnaireResponse') {
+    throw new Error('Invalid input');
+  }
+
+  if (!input.questionnaire) {
+    throw new Error('Questionnaire is required');
+  }
+
+  await medplum
+    .readResource('Questionnaire', resolveId({ reference: input.questionnaire }) as string)
+    .then((questionnaire) => {
+      if (questionnaire.name !== PATIENT_INTAKE_QUESTIONNAIRE_NAME) {
+        throw new Error('Invalid questionnaire');
+      }
+    });
+
   const results = {
     patient: { resourceType: 'Patient' } satisfies Patient,
     transferringFacility: undefined,
     transferringPhysician: { resourceType: 'Practitioner', name: [{}] } satisfies Practitioner,
   } as ParsedResults;
 
-  if (event.input?.resourceType !== 'QuestionnaireResponse') {
-    throw new Error('Invalid input');
-  }
-
-  const answers = getQuestionnaireAnswers(event.input);
+  const answers = getQuestionnaireAnswers(input);
 
   const parseAnswer = async (linkId: ValidLinkId, answer: QuestionnaireResponseItemAnswer): Promise<void> => {
     const { patient } = results;
@@ -78,6 +92,14 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
           throw new Error('Failed to parse date from item with linkId birthdate');
         }
         patient.birthDate = birthDate;
+        return;
+      }
+      case 'phone': {
+        const phone = answer.valueString;
+        if (!phone) {
+          throw new Error('Failed to parse valid phone number from item with linkId phone');
+        }
+        patient.telecom = [{ system: 'phone', value: phone }];
         return;
       }
       case 'diagnosis': {
@@ -167,8 +189,12 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Required dateTime not specified');
   }
 
-  if (!(results.patient?.name?.[0]?.given?.length && results.patient?.name?.[0].family && results.patient.birthDate)) {
-    throw new Error('Patient details missing or no available room found');
+  if (!(results.patient?.name?.[0]?.given?.length && results.patient?.name?.[0].family)) {
+    throw new Error('Missing patient name');
+  }
+
+  if (!results.patient.birthDate) {
+    throw new Error('Missing patient birthdate');
   }
 
   if (!results.transferringPhysician?.telecom?.[0]) {
