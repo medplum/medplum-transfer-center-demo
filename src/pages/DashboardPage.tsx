@@ -12,7 +12,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 const HAYS_CALL_RESULT_SYSTEM_STR = 'https://haysmed.com/fhir/CodeSystem/call-dispositions';
 
 const serviceReqQuery = `{
-  ResourceList: ServiceRequestList(code: "http://snomed.info/sct|19712007", authored: "gt01-01-70", _sort: "-authored", _count: 4) {
+  ResourceList: ServiceRequestList(code: "http://snomed.info/sct|19712007", authored: "gt1970-01-01", _sort: "-authored", _count: 4) {
     id,
     authoredOn,
     subject {
