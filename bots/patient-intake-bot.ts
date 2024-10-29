@@ -1,5 +1,6 @@
 import { BotEvent, MedplumClient, createReference, getQuestionnaireAnswers, resolveId } from '@medplum/core';
 import {
+  Address,
   HumanName,
   Organization,
   Patient,
@@ -10,7 +11,8 @@ import {
 } from '@medplum/fhirtypes';
 import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
-type PatientLinkId = 'firstName' | 'lastName' | 'birthdate' | 'phone' | 'diagnosis' | 'chiefComplaint';
+type AddressLinkId = 'street' | 'city' | 'state' | 'postalCode';
+type PatientLinkId = 'firstName' | 'lastName' | 'birthdate' | 'phone' | 'diagnosis' | 'chiefComplaint' | AddressLinkId;
 type TransferLinkId = 'transferOrigin' | 'transferFacility';
 type TransferPhysLinkId = 'transferPhysFirst' | 'transferPhysLast' | 'transferPhysQual' | 'transferPhysPhone';
 type ValidLinkId = PatientLinkId | TransferLinkId | TransferPhysLinkId | 'dateTime' | 'requisitionId';
@@ -52,6 +54,10 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   const parseAnswer = async (linkId: ValidLinkId, answer: QuestionnaireResponseItemAnswer): Promise<void> => {
     const { patient } = results;
+    const basePatientAddress = {
+      use: 'home',
+      type: 'physical',
+    } satisfies Address;
 
     switch (linkId) {
       case 'dateTime': {
@@ -100,6 +106,50 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
           throw new Error('Failed to parse valid phone number from item with linkId phone');
         }
         patient.telecom = [{ system: 'phone', value: phone }];
+        return;
+      }
+      case 'street': {
+        const street = answer.valueString;
+        if (!street) {
+          throw new Error('Failed to parse valid string from item with linkId street');
+        }
+        if (!patient.address) {
+          patient.address = [basePatientAddress];
+        }
+        patient.address[0].line = [street];
+        return;
+      }
+      case 'city': {
+        const city = answer.valueString;
+        if (!city) {
+          throw new Error('Failed to parse valid string from item with linkId city');
+        }
+        if (!patient.address) {
+          patient.address = [basePatientAddress];
+        }
+        patient.address[0].city = city;
+        return;
+      }
+      case 'state': {
+        const state = answer.valueCoding?.code;
+        if (!state) {
+          throw new Error('Failed to parse valid string from item with linkId state');
+        }
+        if (!patient.address) {
+          patient.address = [basePatientAddress];
+        }
+        patient.address[0].state = state;
+        return;
+      }
+      case 'postalCode': {
+        const postalCode = answer.valueString;
+        if (!postalCode) {
+          throw new Error('Failed to parse valid string from item with linkId postalCode');
+        }
+        if (!patient.address) {
+          patient.address = [basePatientAddress];
+        }
+        patient.address[0].postalCode = postalCode;
         return;
       }
       case 'diagnosis': {

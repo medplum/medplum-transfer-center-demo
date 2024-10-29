@@ -24,7 +24,7 @@ describe('Patient Intake Bot', async () => {
     },
     {
       linkId: 'birthdate',
-      answer: [{ valueDate: '1980-01-01' }],
+      answer: [{ valueDate: '1958-03-19' }],
     },
     {
       linkId: 'transferPhysPhone',
@@ -90,6 +90,31 @@ describe('Patient Intake Bot', async () => {
               linkId: 'phone',
               type: 'string',
               text: 'Phone Number',
+            },
+            {
+              id: 'id-49',
+              linkId: 'street',
+              text: 'Street',
+              type: 'string',
+            },
+            {
+              id: 'id-50',
+              linkId: 'city',
+              text: 'City',
+              type: 'string',
+            },
+            {
+              id: 'id-51',
+              linkId: 'state',
+              text: 'State',
+              type: 'choice',
+              answerValueSet: 'http://hl7.org/fhir/us/core/ValueSet/us-core-usps-state',
+            },
+            {
+              id: 'id-52',
+              linkId: 'postalCode',
+              text: 'Postal Code',
+              type: 'string',
             },
             {
               id: 'id-30',
@@ -282,6 +307,22 @@ describe('Patient Intake Bot', async () => {
           linkId: 'phone',
           answer: [{ valueString: '123-456-7890' }],
         },
+        {
+          linkId: 'street',
+          answer: [{ valueString: '123 Main St' }],
+        },
+        {
+          linkId: 'city',
+          answer: [{ valueString: 'Sunnyvale' }],
+        },
+        {
+          linkId: 'state',
+          answer: [{ valueCoding: { system: 'http://hl7.org/fhir/us/core/ValueSet/us-core-usps-state', code: 'CA' } }],
+        },
+        {
+          linkId: 'postalCode',
+          answer: [{ valueString: '95008' }],
+        },
       ],
     };
 
@@ -289,7 +330,19 @@ describe('Patient Intake Bot', async () => {
 
     const patient = await medplum.searchOne('Patient', 'name=Marge');
     expect(patient).toBeDefined();
+    expect(patient?.name).toEqual([{ family: 'Simpson', given: ['Marge'] }]);
+    expect(patient?.birthDate).toEqual('1958-03-19');
     expect(patient?.telecom).toEqual([{ system: 'phone', value: '123-456-7890' }]);
+    expect(patient?.address).toEqual([
+      {
+        use: 'home',
+        type: 'physical',
+        line: ['123 Main St'],
+        city: 'Sunnyvale',
+        state: 'CA',
+        postalCode: '95008',
+      },
+    ]);
   });
 
   it('throws error on missing questionnaire', async () => {
