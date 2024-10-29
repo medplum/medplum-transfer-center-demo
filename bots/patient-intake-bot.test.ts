@@ -117,35 +117,43 @@ describe('Patient Intake Bot', async () => {
               type: 'string',
             },
             {
-              id: 'id-53',
-              linkId: 'bloodPressureSystolic',
-              type: 'integer',
-              text: 'Systolic Blood Pressure (mmHg)',
-            },
-            {
-              id: 'id-54',
-              linkId: 'bloodPressureDiastolic',
-              type: 'integer',
-              text: 'Diastolic Blood Pressure (mmHg)',
-            },
-            {
-              id: 'id-31',
-              linkId: 'height',
-              type: 'string',
-              text: 'Height',
-            },
-            {
-              id: 'id-32',
-              linkId: 'weight',
-              type: 'string',
-              text: 'Weight',
-            },
-            {
               id: 'id-28',
               linkId: 'chiefComplaint',
               type: 'choice',
               text: 'Chief Complaint',
               answerValueSet: 'https://haysmed.com/fhir/ValueSet/chief-complaint',
+            },
+            {
+              id: 'id-55',
+              linkId: 'vitalSigns',
+              type: 'group',
+              text: 'Vital Signs',
+              item: [
+                {
+                  id: 'id-53',
+                  linkId: 'bloodPressureSystolic',
+                  type: 'integer',
+                  text: 'Systolic Blood Pressure (mmHg)',
+                },
+                {
+                  id: 'id-54',
+                  linkId: 'bloodPressureDiastolic',
+                  type: 'integer',
+                  text: 'Diastolic Blood Pressure (mmHg)',
+                },
+                {
+                  id: 'id-31',
+                  linkId: 'height',
+                  type: 'string',
+                  text: 'Height',
+                },
+                {
+                  id: 'id-32',
+                  linkId: 'weight',
+                  type: 'string',
+                  text: 'Weight',
+                },
+              ],
             },
             {
               id: 'id-33',
@@ -334,12 +342,17 @@ describe('Patient Intake Bot', async () => {
         answer: [{ valueString: '95008' }],
       },
       {
-        linkId: 'bloodPressureSystolic',
-        answer: [{ valueInteger: 120 }],
-      },
-      {
-        linkId: 'bloodPressureDiastolic',
-        answer: [{ valueInteger: 80 }],
+        linkId: 'vitalSigns',
+        item: [
+          {
+            linkId: 'bloodPressureSystolic',
+            answer: [{ valueInteger: 120 }],
+          },
+          {
+            linkId: 'bloodPressureDiastolic',
+            answer: [{ valueInteger: 80 }],
+          },
+        ],
       },
     ]);
 
