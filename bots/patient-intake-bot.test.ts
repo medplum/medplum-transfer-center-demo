@@ -1,6 +1,6 @@
 import { MockClient } from '@medplum/mock';
 import { handler } from './patient-intake-bot';
-import { Questionnaire, QuestionnaireResponse } from '@medplum/fhirtypes';
+import { Patient, Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
 import { generateId, getReferenceString } from '@medplum/core';
 import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
@@ -117,10 +117,16 @@ describe('Patient Intake Bot', async () => {
               type: 'string',
             },
             {
-              id: 'id-30',
-              linkId: 'vitalSigns',
-              type: 'string',
-              text: 'Vital Signs',
+              id: 'id-53',
+              linkId: 'bloodPressureSystolic',
+              type: 'integer',
+              text: 'Systolic Blood Pressure (mmHg)',
+            },
+            {
+              id: 'id-54',
+              linkId: 'bloodPressureDiastolic',
+              type: 'integer',
+              text: 'Diastolic Blood Pressure (mmHg)',
             },
             {
               id: 'id-31',
@@ -296,44 +302,55 @@ describe('Patient Intake Bot', async () => {
     });
   });
 
-  it('successfully creates resources', async () => {
-    const input: QuestionnaireResponse = {
+  function createInput(items: QuestionnaireResponseItem[]): QuestionnaireResponse {
+    return {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
       questionnaire: getReferenceString(questionnaire),
-      item: [
-        ...requiredAnswerItems,
-        {
-          linkId: 'phone',
-          answer: [{ valueString: '123-456-7890' }],
-        },
-        {
-          linkId: 'street',
-          answer: [{ valueString: '123 Main St' }],
-        },
-        {
-          linkId: 'city',
-          answer: [{ valueString: 'Sunnyvale' }],
-        },
-        {
-          linkId: 'state',
-          answer: [{ valueCoding: { system: 'http://hl7.org/fhir/us/core/ValueSet/us-core-usps-state', code: 'CA' } }],
-        },
-        {
-          linkId: 'postalCode',
-          answer: [{ valueString: '95008' }],
-        },
-      ],
+      item: [...requiredAnswerItems, ...items],
     };
+  }
+
+  it('successfully creates resources', async () => {
+    const input: QuestionnaireResponse = createInput([
+      {
+        linkId: 'phone',
+        answer: [{ valueString: '123-456-7890' }],
+      },
+      {
+        linkId: 'street',
+        answer: [{ valueString: '123 Main St' }],
+      },
+      {
+        linkId: 'city',
+        answer: [{ valueString: 'Sunnyvale' }],
+      },
+      {
+        linkId: 'state',
+        answer: [{ valueCoding: { system: 'http://hl7.org/fhir/us/core/ValueSet/us-core-usps-state', code: 'CA' } }],
+      },
+      {
+        linkId: 'postalCode',
+        answer: [{ valueString: '95008' }],
+      },
+      {
+        linkId: 'bloodPressureSystolic',
+        answer: [{ valueInteger: 120 }],
+      },
+      {
+        linkId: 'bloodPressureDiastolic',
+        answer: [{ valueInteger: 80 }],
+      },
+    ]);
 
     await handler(medplum, { bot, input, contentType, secrets: {} });
 
-    const patient = await medplum.searchOne('Patient', 'name=Marge');
+    const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
     expect(patient).toBeDefined();
-    expect(patient?.name).toEqual([{ family: 'Simpson', given: ['Marge'] }]);
-    expect(patient?.birthDate).toEqual('1958-03-19');
-    expect(patient?.telecom).toEqual([{ system: 'phone', value: '123-456-7890' }]);
-    expect(patient?.address).toEqual([
+    expect(patient.name).toEqual([{ family: 'Simpson', given: ['Marge'] }]);
+    expect(patient.birthDate).toEqual('1958-03-19');
+    expect(patient.telecom).toEqual([{ system: 'phone', value: '123-456-7890' }]);
+    expect(patient.address).toEqual([
       {
         use: 'home',
         type: 'physical',
@@ -343,6 +360,17 @@ describe('Patient Intake Bot', async () => {
         postalCode: '95008',
       },
     ]);
+
+    const bloodPressureObservation = await medplum.searchOne('Observation', {
+      subject: getReferenceString(patient),
+      code: 'http://loinc.org|85354-9',
+    });
+    expect(bloodPressureObservation).toBeDefined();
+    expect(bloodPressureObservation?.component).toHaveLength(2);
+    expect(bloodPressureObservation?.component?.[0].code.coding?.[0].code).toEqual('8480-6');
+    expect(bloodPressureObservation?.component?.[0].valueQuantity?.value).toEqual(120);
+    expect(bloodPressureObservation?.component?.[1].code.coding?.[0].code).toEqual('8462-4');
+    expect(bloodPressureObservation?.component?.[1].valueQuantity?.value).toEqual(80);
   });
 
   it('throws error on missing questionnaire', async () => {
@@ -423,5 +451,59 @@ describe('Patient Intake Bot', async () => {
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
     }).rejects.toThrow('Missing patient birthdate');
+  });
+
+  it('throws error on missing one of blood pressure values', async () => {
+    const systolicOnly = createInput([
+      {
+        linkId: 'bloodPressureSystolic',
+        answer: [{ valueInteger: 120 }],
+      },
+    ]);
+
+    const diastolicOnly = createInput([
+      {
+        linkId: 'bloodPressureDiastolic',
+        answer: [{ valueInteger: 80 }],
+      },
+    ]);
+
+    const bothValues = createInput([
+      {
+        linkId: 'bloodPressureSystolic',
+        answer: [{ valueInteger: 120 }],
+      },
+      {
+        linkId: 'bloodPressureDiastolic',
+        answer: [{ valueInteger: 80 }],
+      },
+    ]);
+
+    await expect(async () => {
+      await handler(medplum, {
+        bot,
+        input: systolicOnly,
+        contentType,
+        secrets: {},
+      });
+    }).rejects.toThrow('Both systolic and diastolic blood pressure values are required');
+
+    await expect(async () => {
+      await handler(medplum, {
+        bot,
+        input: diastolicOnly,
+        contentType,
+        secrets: {},
+      });
+    }).rejects.toThrow('Both systolic and diastolic blood pressure values are required');
+
+    await expect(async () => {
+      await handler(medplum, {
+        bot,
+        input: bothValues,
+        contentType,
+        secrets: {},
+      });
+    }).not.toThrow();
   });
 });

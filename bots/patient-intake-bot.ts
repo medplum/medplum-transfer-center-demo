@@ -1,4 +1,12 @@
-import { BotEvent, MedplumClient, createReference, getQuestionnaireAnswers, resolveId } from '@medplum/core';
+import {
+  BotEvent,
+  LOINC,
+  MedplumClient,
+  UCUM,
+  createReference,
+  getQuestionnaireAnswers,
+  resolveId,
+} from '@medplum/core';
 import {
   Address,
   HumanName,
@@ -12,7 +20,16 @@ import {
 import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
 type AddressLinkId = 'street' | 'city' | 'state' | 'postalCode';
-type PatientLinkId = 'firstName' | 'lastName' | 'birthdate' | 'phone' | 'diagnosis' | 'chiefComplaint' | AddressLinkId;
+type PatientLinkId =
+  | 'firstName'
+  | 'lastName'
+  | 'birthdate'
+  | 'phone'
+  | 'diagnosis'
+  | 'chiefComplaint'
+  | 'bloodPressureSystolic'
+  | 'bloodPressureDiastolic'
+  | AddressLinkId;
 type TransferLinkId = 'transferOrigin' | 'transferFacility';
 type TransferPhysLinkId = 'transferPhysFirst' | 'transferPhysLast' | 'transferPhysQual' | 'transferPhysPhone';
 type ValidLinkId = PatientLinkId | TransferLinkId | TransferPhysLinkId | 'dateTime' | 'requisitionId';
@@ -23,6 +40,7 @@ type ParsedResults = {
   transferringPhysician: Practitioner;
   transferringFacility: Reference | undefined;
   requisitionId: string;
+  bloodPressure?: Record<'systolic' | 'diastolic', number | undefined>;
 };
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
@@ -152,6 +170,24 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         patient.address[0].postalCode = postalCode;
         return;
       }
+      case 'bloodPressureSystolic':
+      case 'bloodPressureDiastolic': {
+        const bloodPressure = results.bloodPressure || {
+          systolic: undefined,
+          diastolic: undefined,
+        };
+        const value = answer.valueInteger;
+        if (value === undefined || value === null) {
+          throw new Error(`Failed to parse valid integer from item with linkId ${linkId}`);
+        }
+        if (linkId === 'bloodPressureSystolic') {
+          bloodPressure.systolic = value;
+        } else {
+          bloodPressure.diastolic = value;
+        }
+        results.bloodPressure = bloodPressure;
+        return;
+      }
       case 'diagnosis': {
         const diagnosis = answer.valueCoding;
         if (!diagnosis) {
@@ -247,6 +283,13 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Missing patient birthdate');
   }
 
+  if (
+    (typeof results.bloodPressure?.systolic === 'number' && typeof results.bloodPressure?.diastolic === 'undefined') ||
+    (typeof results.bloodPressure?.systolic === 'undefined' && typeof results.bloodPressure?.diastolic === 'number')
+  ) {
+    throw new Error('Both systolic and diastolic blood pressure values are required');
+  }
+
   if (!results.transferringPhysician?.telecom?.[0]) {
     throw new Error('Missing required transfer physician phone number');
   }
@@ -265,6 +308,70 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   // Create the patient in Medplum
   // TODO: Create if not exists
   const patient = await medplum.createResource(results.patient);
+
+  // Create the blood pressure observation, if available
+  if (results.bloodPressure?.systolic && results.bloodPressure?.diastolic) {
+    await medplum.createResource({
+      resourceType: 'Observation',
+      status: 'final',
+      category: [
+        {
+          coding: [
+            {
+              system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+              code: 'vital-signs',
+              display: 'Vital Signs',
+            },
+          ],
+          text: 'Vital Signs',
+        },
+      ],
+      code: {
+        coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }],
+        text: 'Blood Pressure',
+      },
+      subject: createReference(patient),
+      effectiveDateTime: new Date(results.dateTime).toISOString(),
+      component: [
+        {
+          code: {
+            coding: [
+              {
+                system: LOINC,
+                code: '8480-6',
+                display: 'Systolic blood pressure',
+              },
+            ],
+            text: 'Systolic blood pressure',
+          },
+          valueQuantity: {
+            value: results.bloodPressure.systolic,
+            unit: 'mmHg',
+            system: UCUM,
+            code: 'mm[Hg]',
+          },
+        },
+        {
+          code: {
+            coding: [
+              {
+                system: LOINC,
+                code: '8462-4',
+                display: 'Diastolic blood pressure',
+              },
+            ],
+            text: 'Diastolic blood pressure',
+          },
+          valueQuantity: {
+            value: results.bloodPressure.diastolic,
+            unit: 'mmHg',
+            system: UCUM,
+            code: 'mm[Hg]',
+          },
+        },
+      ],
+    });
+  }
 
   // TODO: Create if not exists
   const transferringPhys = await medplum.createResource(results.transferringPhysician);
