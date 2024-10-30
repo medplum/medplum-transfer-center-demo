@@ -32,6 +32,7 @@ type PatientLinkId =
   | 'bloodPressureSystolic'
   | 'bloodPressureDiastolic'
   | 'temperature'
+  | 'respiratoryRate'
   | 'height'
   | 'weight'
   | AddressLinkId;
@@ -47,6 +48,7 @@ type ParsedResults = {
   requisitionId: string;
   bloodPressure?: Record<'systolic' | 'diastolic', number | undefined>;
   temperature?: number;
+  respiratoryRate?: number;
   height?: number;
   weight?: number;
 };
@@ -197,6 +199,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         return;
       }
       case 'temperature':
+      case 'respiratoryRate':
       case 'height':
       case 'weight': {
         const value = answer.valueDecimal;
@@ -342,6 +345,17 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   if (temperatureObservation) {
     await medplum.createResource(temperatureObservation);
+  }
+
+  const respiratoryRateObservation = createRespiratoryRateObservation({
+    respiratoryRate: results.respiratoryRate,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+
+  if (respiratoryRateObservation) {
+    await medplum.createResource(respiratoryRateObservation);
   }
 
   const heightObservation = createHeightObservation({
@@ -613,6 +627,51 @@ function createBloodPressureObservation({
   };
 
   return bloodPressureObservation;
+}
+
+function createRespiratoryRateObservation({
+  respiratoryRate,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  respiratoryRate: number | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!respiratoryRate) return undefined;
+
+  const respiratoryRateObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    category: [
+      {
+        coding: [
+          {
+            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+            code: 'vital-signs',
+            display: 'Vital Signs',
+          },
+        ],
+        text: 'Vital Signs',
+      },
+    ],
+    code: {
+      coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }],
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    valueQuantity: {
+      value: respiratoryRate,
+      unit: 'breaths/min',
+      system: UCUM,
+      code: '/min',
+    },
+  };
+
+  return respiratoryRateObservation;
 }
 
 function createBodyTemperatureObservation({
