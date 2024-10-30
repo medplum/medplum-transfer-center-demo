@@ -10,6 +10,8 @@ import {
 import {
   Address,
   HumanName,
+  Observation,
+  ObservationComponent,
   Organization,
   Patient,
   Practitioner,
@@ -29,6 +31,8 @@ type PatientLinkId =
   | 'chiefComplaint'
   | 'bloodPressureSystolic'
   | 'bloodPressureDiastolic'
+  | 'height'
+  | 'weight'
   | AddressLinkId;
 type TransferLinkId = 'transferOrigin' | 'transferFacility';
 type TransferPhysLinkId = 'transferPhysFirst' | 'transferPhysLast' | 'transferPhysQual' | 'transferPhysPhone';
@@ -41,6 +45,8 @@ type ParsedResults = {
   transferringFacility: Reference | undefined;
   requisitionId: string;
   bloodPressure?: Record<'systolic' | 'diastolic', number | undefined>;
+  height?: number;
+  weight?: number;
 };
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
@@ -177,7 +183,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
           diastolic: undefined,
         };
         const value = answer.valueInteger;
-        if (value === undefined || value === null) {
+        if (typeof value !== 'number') {
           throw new Error(`Failed to parse valid integer from item with linkId ${linkId}`);
         }
         if (linkId === 'bloodPressureSystolic') {
@@ -186,6 +192,15 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
           bloodPressure.diastolic = value;
         }
         results.bloodPressure = bloodPressure;
+        return;
+      }
+      case 'height':
+      case 'weight': {
+        const value = answer.valueDecimal;
+        if (typeof value !== 'number') {
+          throw new Error(`Failed to parse valid decimal from item with linkId ${linkId}`);
+        }
+        results[linkId] = value;
         return;
       }
       case 'diagnosis': {
@@ -283,13 +298,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Missing patient birthdate');
   }
 
-  if (
-    (typeof results.bloodPressure?.systolic === 'number' && typeof results.bloodPressure?.diastolic === 'undefined') ||
-    (typeof results.bloodPressure?.systolic === 'undefined' && typeof results.bloodPressure?.diastolic === 'number')
-  ) {
-    throw new Error('Both systolic and diastolic blood pressure values are required');
-  }
-
   if (!results.transferringPhysician?.telecom?.[0]) {
     throw new Error('Missing required transfer physician phone number');
   }
@@ -305,72 +313,43 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   // After processing all items from QuestionnaireResponse,
   // We can process the data we parsed from it
 
+  const effectiveDateTime = new Date(results.dateTime).toISOString();
+
   // Create the patient in Medplum
   // TODO: Create if not exists
   const patient = await medplum.createResource(results.patient);
 
-  // Create the blood pressure observation, if available
-  if (results.bloodPressure?.systolic && results.bloodPressure?.diastolic) {
-    await medplum.createResource({
-      resourceType: 'Observation',
-      status: 'final',
-      category: [
-        {
-          coding: [
-            {
-              system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-              code: 'vital-signs',
-              display: 'Vital Signs',
-            },
-          ],
-          text: 'Vital Signs',
-        },
-      ],
-      code: {
-        coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }],
-        text: 'Blood Pressure',
-      },
-      subject: createReference(patient),
-      effectiveDateTime: new Date(results.dateTime).toISOString(),
-      component: [
-        {
-          code: {
-            coding: [
-              {
-                system: LOINC,
-                code: '8480-6',
-                display: 'Systolic blood pressure',
-              },
-            ],
-            text: 'Systolic blood pressure',
-          },
-          valueQuantity: {
-            value: results.bloodPressure.systolic,
-            unit: 'mmHg',
-            system: UCUM,
-            code: 'mm[Hg]',
-          },
-        },
-        {
-          code: {
-            coding: [
-              {
-                system: LOINC,
-                code: '8462-4',
-                display: 'Diastolic blood pressure',
-              },
-            ],
-            text: 'Diastolic blood pressure',
-          },
-          valueQuantity: {
-            value: results.bloodPressure.diastolic,
-            unit: 'mmHg',
-            system: UCUM,
-            code: 'mm[Hg]',
-          },
-        },
-      ],
-    });
+  const bloodPressureObservation = createBloodPressureObservation({
+    diastolic: results.bloodPressure?.diastolic,
+    systolic: results.bloodPressure?.systolic,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+  if (bloodPressureObservation) {
+    await medplum.createResource(bloodPressureObservation);
+  }
+
+  const heightObservation = createHeightObservation({
+    height: results.height,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+
+  if (heightObservation) {
+    await medplum.createResource(heightObservation);
+  }
+
+  const weightObservation = createWeightObservation({
+    weight: results.weight,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+
+  if (weightObservation) {
+    await medplum.createResource(weightObservation);
   }
 
   // TODO: Create if not exists
@@ -532,4 +511,182 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   //   const hl7Response = Hl7Message.parse(response as string);
   //   console.info(`Device responded with: ${hl7Response.toString()}`);
+}
+
+function createBloodPressureObservation({
+  diastolic,
+  systolic,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  diastolic: number | undefined;
+  systolic: number | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!systolic && !diastolic) {
+    return undefined;
+  }
+
+  const components: ObservationComponent[] = [];
+
+  if (systolic) {
+    components.push({
+      code: {
+        coding: [
+          {
+            system: LOINC,
+            code: '8480-6',
+            display: 'Systolic blood pressure',
+          },
+        ],
+        text: 'Systolic blood pressure',
+      },
+      valueQuantity: {
+        value: systolic,
+        unit: 'mmHg',
+        system: UCUM,
+        code: 'mm[Hg]',
+      },
+    });
+  }
+
+  if (diastolic) {
+    components.push({
+      code: {
+        coding: [
+          {
+            system: LOINC,
+            code: '8462-4',
+            display: 'Diastolic blood pressure',
+          },
+        ],
+        text: 'Diastolic blood pressure',
+      },
+      valueQuantity: {
+        value: diastolic,
+        unit: 'mmHg',
+        system: UCUM,
+        code: 'mm[Hg]',
+      },
+    });
+  }
+
+  const bloodPressureObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    category: [
+      {
+        coding: [
+          {
+            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+            code: 'vital-signs',
+            display: 'Vital Signs',
+          },
+        ],
+        text: 'Vital Signs',
+      },
+    ],
+    code: {
+      coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }],
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    component: components,
+  };
+
+  return bloodPressureObservation;
+}
+
+function createHeightObservation({
+  height,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  height: number | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!height) return undefined;
+
+  const heightObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    category: [
+      {
+        coding: [
+          {
+            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+            code: 'vital-signs',
+            display: 'Vital Signs',
+          },
+        ],
+        text: 'Vital Signs',
+      },
+    ],
+    code: {
+      coding: [{ system: LOINC, code: '8302-2', display: 'Body height' }],
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    valueQuantity: {
+      value: height,
+      unit: 'in_i',
+      system: UCUM,
+      code: '[in_i]',
+    },
+  };
+
+  return heightObservation;
+}
+
+function createWeightObservation({
+  weight,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  weight: number | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!weight) return undefined;
+
+  const weightObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    category: [
+      {
+        coding: [
+          {
+            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+            code: 'vital-signs',
+            display: 'Vital Signs',
+          },
+        ],
+        text: 'Vital Signs',
+      },
+    ],
+    code: {
+      coding: [{ system: LOINC, code: '29463-7', display: 'Body weight' }],
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    valueQuantity: {
+      value: weight,
+      unit: 'lb_av',
+      system: UCUM,
+      code: '[lb_av]',
+    },
+  };
+
+  return weightObservation;
 }

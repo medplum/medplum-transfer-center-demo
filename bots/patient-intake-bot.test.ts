@@ -1,7 +1,7 @@
 import { MockClient } from '@medplum/mock';
 import { handler } from './patient-intake-bot';
 import { Patient, Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
-import { generateId, getReferenceString } from '@medplum/core';
+import { generateId, getReferenceString, LOINC, UCUM } from '@medplum/core';
 import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
 describe('Patient Intake Bot', async () => {
@@ -144,14 +144,14 @@ describe('Patient Intake Bot', async () => {
                 {
                   id: 'id-31',
                   linkId: 'height',
-                  type: 'string',
-                  text: 'Height',
+                  type: 'decimal',
+                  text: 'Height (in)',
                 },
                 {
                   id: 'id-32',
                   linkId: 'weight',
-                  type: 'string',
-                  text: 'Weight',
+                  type: 'decimal',
+                  text: 'Weight (lb)',
                 },
               ],
             },
@@ -352,6 +352,14 @@ describe('Patient Intake Bot', async () => {
             linkId: 'bloodPressureDiastolic',
             answer: [{ valueInteger: 80 }],
           },
+          {
+            linkId: 'height',
+            answer: [{ valueDecimal: 65 }],
+          },
+          {
+            linkId: 'weight',
+            answer: [{ valueDecimal: 133 }],
+          },
         ],
       },
     ]);
@@ -374,16 +382,50 @@ describe('Patient Intake Bot', async () => {
       },
     ]);
 
-    const bloodPressureObservation = await medplum.searchOne('Observation', {
+    const bloodPressureObservation = await medplum.searchResources('Observation', {
       subject: getReferenceString(patient),
-      code: 'http://loinc.org|85354-9',
+      code: `${LOINC}|85354-9`,
     });
-    expect(bloodPressureObservation).toBeDefined();
-    expect(bloodPressureObservation?.component).toHaveLength(2);
-    expect(bloodPressureObservation?.component?.[0].code.coding?.[0].code).toEqual('8480-6');
-    expect(bloodPressureObservation?.component?.[0].valueQuantity?.value).toEqual(120);
-    expect(bloodPressureObservation?.component?.[1].code.coding?.[0].code).toEqual('8462-4');
-    expect(bloodPressureObservation?.component?.[1].valueQuantity?.value).toEqual(80);
+    expect(bloodPressureObservation).toHaveLength(1);
+    expect(bloodPressureObservation[0].component).toHaveLength(2);
+    expect(bloodPressureObservation[0].component?.[0].code.coding?.[0].code).toEqual('8480-6');
+    expect(bloodPressureObservation[0].component?.[0].valueQuantity).toEqual({
+      value: 120,
+      unit: 'mmHg',
+      system: UCUM,
+      code: 'mm[Hg]',
+    });
+    expect(bloodPressureObservation[0].component?.[1].code.coding?.[0].code).toEqual('8462-4');
+    expect(bloodPressureObservation[0].component?.[1].valueQuantity).toEqual({
+      value: 80,
+      unit: 'mmHg',
+      system: UCUM,
+      code: 'mm[Hg]',
+    });
+
+    const heightObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|8302-2`,
+    });
+    expect(heightObservation).toHaveLength(1);
+    expect(heightObservation[0].valueQuantity).toEqual({
+      value: 65,
+      unit: 'in_i',
+      system: UCUM,
+      code: '[in_i]',
+    });
+
+    const weightObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|29463-7`,
+    });
+    expect(weightObservation).toHaveLength(1);
+    expect(weightObservation[0].valueQuantity).toEqual({
+      value: 133,
+      unit: 'lb_av',
+      system: UCUM,
+      code: '[lb_av]',
+    });
   });
 
   it('throws error on missing questionnaire', async () => {
@@ -464,59 +506,5 @@ describe('Patient Intake Bot', async () => {
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
     }).rejects.toThrow('Missing patient birthdate');
-  });
-
-  it('throws error on missing one of blood pressure values', async () => {
-    const systolicOnly = createInput([
-      {
-        linkId: 'bloodPressureSystolic',
-        answer: [{ valueInteger: 120 }],
-      },
-    ]);
-
-    const diastolicOnly = createInput([
-      {
-        linkId: 'bloodPressureDiastolic',
-        answer: [{ valueInteger: 80 }],
-      },
-    ]);
-
-    const bothValues = createInput([
-      {
-        linkId: 'bloodPressureSystolic',
-        answer: [{ valueInteger: 120 }],
-      },
-      {
-        linkId: 'bloodPressureDiastolic',
-        answer: [{ valueInteger: 80 }],
-      },
-    ]);
-
-    await expect(async () => {
-      await handler(medplum, {
-        bot,
-        input: systolicOnly,
-        contentType,
-        secrets: {},
-      });
-    }).rejects.toThrow('Both systolic and diastolic blood pressure values are required');
-
-    await expect(async () => {
-      await handler(medplum, {
-        bot,
-        input: diastolicOnly,
-        contentType,
-        secrets: {},
-      });
-    }).rejects.toThrow('Both systolic and diastolic blood pressure values are required');
-
-    await expect(async () => {
-      await handler(medplum, {
-        bot,
-        input: bothValues,
-        contentType,
-        secrets: {},
-      });
-    }).not.toThrow();
   });
 });
