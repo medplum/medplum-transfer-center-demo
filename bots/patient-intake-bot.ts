@@ -31,6 +31,7 @@ type PatientLinkId =
   | 'chiefComplaint'
   | 'bloodPressureSystolic'
   | 'bloodPressureDiastolic'
+  | 'temperature'
   | 'height'
   | 'weight'
   | AddressLinkId;
@@ -45,6 +46,7 @@ type ParsedResults = {
   transferringFacility: Reference | undefined;
   requisitionId: string;
   bloodPressure?: Record<'systolic' | 'diastolic', number | undefined>;
+  temperature?: number;
   height?: number;
   weight?: number;
 };
@@ -194,6 +196,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         results.bloodPressure = bloodPressure;
         return;
       }
+      case 'temperature':
       case 'height':
       case 'weight': {
         const value = answer.valueDecimal;
@@ -328,6 +331,17 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   });
   if (bloodPressureObservation) {
     await medplum.createResource(bloodPressureObservation);
+  }
+
+  const temperatureObservation = createBodyTemperatureObservation({
+    temperature: results.temperature,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+
+  if (temperatureObservation) {
+    await medplum.createResource(temperatureObservation);
   }
 
   const heightObservation = createHeightObservation({
@@ -599,6 +613,51 @@ function createBloodPressureObservation({
   };
 
   return bloodPressureObservation;
+}
+
+function createBodyTemperatureObservation({
+  temperature,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  temperature: number | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!temperature) return undefined;
+
+  const temperatureObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    category: [
+      {
+        coding: [
+          {
+            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+            code: 'vital-signs',
+            display: 'Vital Signs',
+          },
+        ],
+        text: 'Vital Signs',
+      },
+    ],
+    code: {
+      coding: [{ system: LOINC, code: '8310-5', display: 'Body temperature' }],
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    valueQuantity: {
+      value: temperature,
+      unit: 'F',
+      system: UCUM,
+      code: '[degF]',
+    },
+  };
+
+  return temperatureObservation;
 }
 
 function createHeightObservation({

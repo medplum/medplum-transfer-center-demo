@@ -142,6 +142,12 @@ describe('Patient Intake Bot', async () => {
                   text: 'Diastolic Blood Pressure (mmHg)',
                 },
                 {
+                  id: 'id-55',
+                  linkId: 'temperature',
+                  type: 'decimal',
+                  text: 'Body Temperature (ºF)',
+                },
+                {
                   id: 'id-31',
                   linkId: 'height',
                   type: 'decimal',
@@ -353,6 +359,10 @@ describe('Patient Intake Bot', async () => {
             answer: [{ valueInteger: 80 }],
           },
           {
+            linkId: 'temperature',
+            answer: [{ valueDecimal: 98.6 }],
+          },
+          {
             linkId: 'height',
             answer: [{ valueDecimal: 65 }],
           },
@@ -401,6 +411,18 @@ describe('Patient Intake Bot', async () => {
       unit: 'mmHg',
       system: UCUM,
       code: 'mm[Hg]',
+    });
+
+    const temperatureObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|8310-5`,
+    });
+    expect(temperatureObservation).toHaveLength(1);
+    expect(temperatureObservation[0].valueQuantity).toEqual({
+      value: 98.6,
+      unit: 'F',
+      system: UCUM,
+      code: '[degF]',
     });
 
     const heightObservation = await medplum.searchResources('Observation', {
