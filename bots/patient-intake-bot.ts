@@ -32,6 +32,7 @@ type PatientLinkId =
   | 'bloodPressureSystolic'
   | 'bloodPressureDiastolic'
   | 'temperature'
+  | 'heartRate'
   | 'respiratoryRate'
   | 'height'
   | 'weight'
@@ -48,6 +49,7 @@ type ParsedResults = {
   requisitionId: string;
   bloodPressure?: Record<'systolic' | 'diastolic', number | undefined>;
   temperature?: number;
+  heartRate?: number;
   respiratoryRate?: number;
   height?: number;
   weight?: number;
@@ -180,22 +182,23 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         patient.address[0].postalCode = postalCode;
         return;
       }
+      case 'heartRate':
       case 'bloodPressureSystolic':
       case 'bloodPressureDiastolic': {
-        const bloodPressure = results.bloodPressure || {
-          systolic: undefined,
-          diastolic: undefined,
-        };
         const value = answer.valueInteger;
         if (typeof value !== 'number') {
           throw new Error(`Failed to parse valid integer from item with linkId ${linkId}`);
         }
-        if (linkId === 'bloodPressureSystolic') {
-          bloodPressure.systolic = value;
-        } else {
-          bloodPressure.diastolic = value;
+        if (!results.bloodPressure) {
+          results.bloodPressure = { systolic: undefined, diastolic: undefined };
         }
-        results.bloodPressure = bloodPressure;
+        if (linkId === 'bloodPressureSystolic') {
+          results.bloodPressure.systolic = value;
+        } else if (linkId === 'bloodPressureDiastolic') {
+          results.bloodPressure.diastolic = value;
+        } else {
+          results[linkId] = value;
+        }
         return;
       }
       case 'temperature':
@@ -345,6 +348,17 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   if (temperatureObservation) {
     await medplum.createResource(temperatureObservation);
+  }
+
+  const heartRateObservation = createHeartRateObservation({
+    heartRate: results.heartRate,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+
+  if (heartRateObservation) {
+    await medplum.createResource(heartRateObservation);
   }
 
   const respiratoryRateObservation = createRespiratoryRateObservation({
@@ -627,6 +641,51 @@ function createBloodPressureObservation({
   };
 
   return bloodPressureObservation;
+}
+
+function createHeartRateObservation({
+  heartRate,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  heartRate: number | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!heartRate) return undefined;
+
+  const heartRateObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    category: [
+      {
+        coding: [
+          {
+            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+            code: 'vital-signs',
+            display: 'Vital Signs',
+          },
+        ],
+        text: 'Vital Signs',
+      },
+    ],
+    code: {
+      coding: [{ system: LOINC, code: '8867-4', display: 'Heart rate' }],
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    valueQuantity: {
+      value: heartRate,
+      unit: 'beats/min',
+      system: UCUM,
+      code: '/min',
+    },
+  };
+
+  return heartRateObservation;
 }
 
 function createRespiratoryRateObservation({

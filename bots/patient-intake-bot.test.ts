@@ -149,6 +149,12 @@ describe('Patient Intake Bot', async () => {
                 },
                 {
                   id: 'id-56',
+                  linkId: 'heartRate',
+                  type: 'integer',
+                  text: 'Heart Rate (beats/minute)',
+                },
+                {
+                  id: 'id-57',
                   linkId: 'respiratoryRate',
                   type: 'decimal',
                   text: 'Respiratory Rate (breaths/minute)',
@@ -369,6 +375,10 @@ describe('Patient Intake Bot', async () => {
             answer: [{ valueDecimal: 98.6 }],
           },
           {
+            linkId: 'heartRate',
+            answer: [{ valueInteger: 72 }],
+          },
+          {
             linkId: 'respiratoryRate',
             answer: [{ valueDecimal: 12 }],
           },
@@ -433,6 +443,18 @@ describe('Patient Intake Bot', async () => {
       unit: 'F',
       system: UCUM,
       code: '[degF]',
+    });
+
+    const heartRateObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|8867-4`,
+    });
+    expect(heartRateObservation).toHaveLength(1);
+    expect(heartRateObservation[0].valueQuantity).toEqual({
+      value: 72,
+      unit: 'beats/min',
+      system: UCUM,
+      code: '/min',
     });
 
     const respiratoryRateObservation = await medplum.searchResources('Observation', {
