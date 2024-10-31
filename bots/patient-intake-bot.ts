@@ -5,11 +5,13 @@ import {
   SNOMED,
   UCUM,
   createReference,
+  getAllQuestionnaireAnswers,
   getQuestionnaireAnswers,
   resolveId,
 } from '@medplum/core';
 import {
   Address,
+  AllergyIntolerance,
   Coding,
   HumanName,
   Observation,
@@ -420,6 +422,14 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   if (weightObservation) {
     await medplum.createResource(weightObservation);
+  }
+
+  const allergyAnswers = getAllQuestionnaireAnswers(input)['allergySubstance'];
+  for (const allergyAnswer of allergyAnswers) {
+    const allergy = createAllergy({ allergy: allergyAnswer.valueCoding, patient });
+    if (allergy) {
+      await medplum.createResource(allergy);
+    }
   }
 
   // TODO: Create if not exists
@@ -982,4 +992,42 @@ function createWeightObservation({
   };
 
   return weightObservation;
+}
+
+function createAllergy({
+  allergy,
+  patient,
+}: {
+  allergy: Coding | undefined;
+  patient: Patient;
+}): AllergyIntolerance | undefined {
+  if (!allergy) return undefined;
+
+  const allergyResource: AllergyIntolerance = {
+    resourceType: 'AllergyIntolerance',
+    clinicalStatus: {
+      text: 'Active',
+      coding: [
+        {
+          system: 'http://hl7.org/fhir/ValueSet/allergyintolerance-clinical',
+          code: 'active',
+          display: 'Active',
+        },
+      ],
+    },
+    verificationStatus: {
+      text: 'Unconfirmed',
+      coding: [
+        {
+          system: 'http://hl7.org/fhir/ValueSet/allergyintolerance-verification',
+          code: 'unconfirmed',
+          display: 'Unconfirmed',
+        },
+      ],
+    },
+    patient: createReference(patient),
+    code: { coding: [allergy] },
+  };
+
+  return allergyResource;
 }

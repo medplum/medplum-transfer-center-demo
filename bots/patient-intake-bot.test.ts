@@ -1,4 +1,4 @@
-import { generateId, getReferenceString, LOINC, SNOMED, UCUM } from '@medplum/core';
+import { generateId, getReferenceString, ICD10, LOINC, SNOMED, UCUM } from '@medplum/core';
 import { Patient, Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
 import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
@@ -93,9 +93,9 @@ describe('Patient Intake Bot', async () => {
         answer: [
           {
             valueCoding: {
-              system: SNOMED,
-              code: '230690007',
-              display: 'STEMI',
+              system: ICD10,
+              code: 'I50',
+              display: 'Heart failure',
             },
           },
         ],
@@ -137,6 +137,40 @@ describe('Patient Intake Bot', async () => {
           },
         ],
       },
+      {
+        linkId: 'allergies',
+        item: [
+          {
+            linkId: 'allergySubstance',
+            answer: [
+              {
+                valueCoding: {
+                  system: SNOMED,
+                  code: '111088007',
+                  display: 'Latex (substance)',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        linkId: 'allergies',
+        item: [
+          {
+            linkId: 'allergySubstance',
+            answer: [
+              {
+                valueCoding: {
+                  system: SNOMED,
+                  code: '256259004',
+                  display: 'Pollen (substance)',
+                },
+              },
+            ],
+          },
+        ],
+      },
     ]);
 
     await handler(medplum, { bot, input, contentType, secrets: {} });
@@ -167,9 +201,9 @@ describe('Patient Intake Bot', async () => {
     expect(chiefComplaintObservation[0].valueCodeableConcept).toEqual({
       coding: [
         {
-          system: SNOMED,
-          code: '230690007',
-          display: 'STEMI',
+          system: ICD10,
+          code: 'I50',
+          display: 'Heart failure',
         },
       ],
     });
@@ -267,6 +301,26 @@ describe('Patient Intake Bot', async () => {
       system: UCUM,
       code: '[lb_av]',
     });
+
+    // Allergies
+    const allergies = await medplum.searchResources('AllergyIntolerance', {
+      patient: getReferenceString(patient),
+    });
+    expect(allergies).toHaveLength(2);
+    expect(allergies[0].code?.coding).toEqual([
+      {
+        system: SNOMED,
+        code: '111088007',
+        display: 'Latex (substance)',
+      },
+    ]);
+    expect(allergies[1].code?.coding).toEqual([
+      {
+        system: SNOMED,
+        code: '256259004',
+        display: 'Pollen (substance)',
+      },
+    ]);
   });
 
   it('throws error on missing questionnaire', async () => {
