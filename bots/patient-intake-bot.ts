@@ -304,15 +304,15 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   }
 
   if (!results.dateTime) {
-    throw new Error('Required dateTime not specified');
+    throw new Error('Missing required dateTime');
   }
 
   if (!(results.patient?.name?.[0]?.given?.length && results.patient?.name?.[0].family)) {
-    throw new Error('Missing patient name');
+    throw new Error('Missing required patient name');
   }
 
   if (!results.patient.birthDate) {
-    throw new Error('Missing patient birthdate');
+    throw new Error('Missing required patient birthdate');
   }
 
   if (!results.transferringPhysician?.telecom?.[0]) {
@@ -320,11 +320,11 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   }
 
   if (!results.transferringFacility) {
-    throw new Error('Transferring origin not specified');
+    throw new Error('Missing required transferring facility');
   }
 
   if (!results.requisitionId) {
-    throw new Error('Missing requisition ID');
+    throw new Error('Missing required requisition ID');
   }
 
   // After processing all items from QuestionnaireResponse,

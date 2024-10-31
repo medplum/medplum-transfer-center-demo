@@ -361,7 +361,7 @@ describe('Patient Intake Bot', async () => {
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Required dateTime not specified');
+    }).rejects.toThrow('Missing required dateTime');
   });
 
   it('throws error on missing patient name', async () => {
@@ -374,7 +374,7 @@ describe('Patient Intake Bot', async () => {
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing patient name');
+    }).rejects.toThrow('Missing required patient name');
   });
 
   it('throws error on missing patient birthdate', async () => {
@@ -400,6 +400,6 @@ describe('Patient Intake Bot', async () => {
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing patient birthdate');
+    }).rejects.toThrow('Missing required patient birthdate');
   });
 });
