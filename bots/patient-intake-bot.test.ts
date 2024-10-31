@@ -1,7 +1,7 @@
 import { MockClient } from '@medplum/mock';
 import { handler } from './patient-intake-bot';
 import { Patient, Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
-import { generateId, getReferenceString, LOINC, UCUM } from '@medplum/core';
+import { generateId, getReferenceString, LOINC, SNOMED, UCUM } from '@medplum/core';
 import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
 describe('Patient Intake Bot', async () => {
@@ -360,6 +360,18 @@ describe('Patient Intake Bot', async () => {
         answer: [{ valueString: '95008' }],
       },
       {
+        linkId: 'chiefComplaint',
+        answer: [
+          {
+            valueCoding: {
+              system: SNOMED,
+              code: '230690007',
+              display: 'STEMI',
+            },
+          },
+        ],
+      },
+      {
         linkId: 'vitalSigns',
         item: [
           {
@@ -396,6 +408,7 @@ describe('Patient Intake Bot', async () => {
 
     await handler(medplum, { bot, input, contentType, secrets: {} });
 
+    // Patient
     const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
     expect(patient).toBeDefined();
     expect(patient.name).toEqual([{ family: 'Simpson', given: ['Marge'] }]);
@@ -412,6 +425,23 @@ describe('Patient Intake Bot', async () => {
       },
     ]);
 
+    // Chief Complaint
+    const chiefComplaintObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|46239-0`,
+    });
+    expect(chiefComplaintObservation).toHaveLength(1);
+    expect(chiefComplaintObservation[0].valueCodeableConcept).toEqual({
+      coding: [
+        {
+          system: SNOMED,
+          code: '230690007',
+          display: 'STEMI',
+        },
+      ],
+    });
+
+    // Vital Signs
     const bloodPressureObservation = await medplum.searchResources('Observation', {
       subject: getReferenceString(patient),
       code: `${LOINC}|85354-9`,

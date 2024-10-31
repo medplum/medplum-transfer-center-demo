@@ -2,6 +2,7 @@ import {
   BotEvent,
   LOINC,
   MedplumClient,
+  SNOMED,
   UCUM,
   createReference,
   getQuestionnaireAnswers,
@@ -9,6 +10,7 @@ import {
 } from '@medplum/core';
 import {
   Address,
+  Coding,
   HumanName,
   Observation,
   ObservationComponent,
@@ -47,6 +49,7 @@ type ParsedResults = {
   transferringPhysician: Practitioner;
   transferringFacility: Reference | undefined;
   requisitionId: string;
+  chiefComplaint?: Coding;
   bloodPressure?: Record<'systolic' | 'diastolic', number | undefined>;
   temperature?: number;
   heartRate?: number;
@@ -212,12 +215,12 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         results[linkId] = value;
         return;
       }
-      case 'diagnosis': {
-        const diagnosis = answer.valueCoding;
-        if (!diagnosis) {
-          throw new Error('Diagnosis not selected');
+      case 'chiefComplaint': {
+        const chiefComplaint = answer.valueCoding;
+        if (!chiefComplaint) {
+          throw new Error('Failed to parse valid Coding from item with linkId chiefComplaint');
         }
-        // TODO: Parse and create a Condition and/or Observation(s), etc.
+        results.chiefComplaint = chiefComplaint;
         return;
       }
       case 'transferFacility': {
@@ -327,6 +330,17 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   // Create the patient in Medplum
   // TODO: Create if not exists
   const patient = await medplum.createResource(results.patient);
+
+  const chiefComplaintObservation = createChiefComplaintObservation({
+    chiefComplaint: results.chiefComplaint,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+
+  if (chiefComplaintObservation) {
+    await medplum.createResource(chiefComplaintObservation);
+  }
 
   const bloodPressureObservation = createBloodPressureObservation({
     diastolic: results.bloodPressure?.diastolic,
@@ -553,6 +567,37 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   //   const hl7Response = Hl7Message.parse(response as string);
   //   console.info(`Device responded with: ${hl7Response.toString()}`);
+}
+
+function createChiefComplaintObservation({
+  chiefComplaint,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  chiefComplaint: Coding | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!chiefComplaint) return undefined;
+
+  const chiefComplaintObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    code: {
+      coding: [
+        { system: LOINC, code: '46239-0', display: 'Chief complaint' },
+        { system: SNOMED, code: '1269489004', display: 'Chief complaint' },
+      ],
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    valueCodeableConcept: { coding: [chiefComplaint] },
+  };
+
+  return chiefComplaintObservation;
 }
 
 function createBloodPressureObservation({
