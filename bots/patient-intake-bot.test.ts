@@ -160,6 +160,12 @@ describe('Patient Intake Bot', async () => {
                   text: 'Respiratory Rate (breaths/minute)',
                 },
                 {
+                  id: 'id-58',
+                  linkId: 'oxygenSaturation',
+                  type: 'decimal',
+                  text: 'Oxygen Saturation (%O2)',
+                },
+                {
                   id: 'id-31',
                   linkId: 'height',
                   type: 'decimal',
@@ -395,6 +401,10 @@ describe('Patient Intake Bot', async () => {
             answer: [{ valueDecimal: 12 }],
           },
           {
+            linkId: 'oxygenSaturation',
+            answer: [{ valueDecimal: 98 }],
+          },
+          {
             linkId: 'height',
             answer: [{ valueDecimal: 65 }],
           },
@@ -497,6 +507,18 @@ describe('Patient Intake Bot', async () => {
       unit: 'breaths/min',
       system: UCUM,
       code: '/min',
+    });
+
+    const oxygenSaturationObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|59408-5`,
+    });
+    expect(oxygenSaturationObservation).toHaveLength(1);
+    expect(oxygenSaturationObservation[0].valueQuantity).toEqual({
+      value: 98,
+      unit: '%O2',
+      system: UCUM,
+      code: '%',
     });
 
     const heightObservation = await medplum.searchResources('Observation', {

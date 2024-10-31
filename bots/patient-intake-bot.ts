@@ -36,6 +36,7 @@ type PatientLinkId =
   | 'temperature'
   | 'heartRate'
   | 'respiratoryRate'
+  | 'oxygenSaturation'
   | 'height'
   | 'weight'
   | AddressLinkId;
@@ -54,6 +55,7 @@ type ParsedResults = {
   temperature?: number;
   heartRate?: number;
   respiratoryRate?: number;
+  oxygenSaturation?: number;
   height?: number;
   weight?: number;
 };
@@ -206,6 +208,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       }
       case 'temperature':
       case 'respiratoryRate':
+      case 'oxygenSaturation':
       case 'height':
       case 'weight': {
         const value = answer.valueDecimal;
@@ -384,6 +387,17 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
   if (respiratoryRateObservation) {
     await medplum.createResource(respiratoryRateObservation);
+  }
+
+  const oxygenSaturationObservation = createOxygenSaturationObservation({
+    oxygenSaturation: results.oxygenSaturation,
+    patient,
+    response: input,
+    effectiveDateTime,
+  });
+
+  if (oxygenSaturationObservation) {
+    await medplum.createResource(oxygenSaturationObservation);
   }
 
   const heightObservation = createHeightObservation({
@@ -821,6 +835,63 @@ function createBodyTemperatureObservation({
   };
 
   return temperatureObservation;
+}
+
+function createOxygenSaturationObservation({
+  oxygenSaturation,
+  patient,
+  response,
+  effectiveDateTime,
+}: {
+  oxygenSaturation: number | undefined;
+  patient: Patient;
+  response: QuestionnaireResponse;
+  effectiveDateTime: string;
+}): Observation | undefined {
+  if (!oxygenSaturation) return undefined;
+
+  const oxygenSaturationObservation: Observation = {
+    resourceType: 'Observation',
+    status: 'final',
+    category: [
+      {
+        coding: [
+          {
+            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+            code: 'vital-signs',
+            display: 'Vital Signs',
+          },
+        ],
+        text: 'Vital Signs',
+      },
+    ],
+    code: {
+      coding: [
+        {
+          system: LOINC,
+          code: '2708-6',
+          display: 'Oxygen saturation in Arterial blood',
+        },
+        {
+          system: LOINC,
+          code: '59408-5',
+          display: 'Oxygen saturation in Arterial blood by Pulse oximetry',
+        },
+      ],
+      text: 'Oxygen saturation',
+    },
+    subject: createReference(patient),
+    effectiveDateTime,
+    derivedFrom: [createReference(response)],
+    valueQuantity: {
+      value: oxygenSaturation,
+      unit: '%O2',
+      system: UCUM,
+      code: '%',
+    },
+  };
+
+  return oxygenSaturationObservation;
 }
 
 function createHeightObservation({
