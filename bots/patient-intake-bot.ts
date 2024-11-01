@@ -13,6 +13,7 @@ import {
   AllergyIntolerance,
   Bundle,
   BundleEntry,
+  CodeableConcept,
   Coding,
   CommunicationRequest,
   Observation,
@@ -28,6 +29,48 @@ import {
 } from '@medplum/fhirtypes';
 import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 import { randomUUID } from 'crypto';
+
+// TODO: Move these constants to a utility file
+const VITAL_SIGNS_CATEGORY: CodeableConcept = {
+  coding: [
+    {
+      system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+      code: 'vital-signs',
+      display: 'Vital Signs',
+    },
+  ],
+  text: 'Vital Signs',
+};
+
+const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
+  bloodPressure: { coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }] },
+  bodyHeight: { coding: [{ system: LOINC, code: '8302-2', display: 'Body height' }] },
+  bodyTemperature: { coding: [{ system: LOINC, code: '8310-5', display: 'Body temperature' }] },
+  bodyWeight: { coding: [{ system: LOINC, code: '29463-7', display: 'Body weight' }] },
+  chiefComplaint: {
+    coding: [
+      { system: LOINC, code: '46239-0', display: 'Chief complaint' },
+      { system: SNOMED, code: '1269489004', display: 'Chief complaint' },
+    ],
+  },
+  heartRate: { coding: [{ system: LOINC, code: '8867-4', display: 'Heart rate' }] },
+  respiratoryRate: { coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }] },
+  oxygenSaturation: {
+    coding: [
+      {
+        system: LOINC,
+        code: '2708-6',
+        display: 'Oxygen saturation in Arterial blood',
+      },
+      {
+        system: LOINC,
+        code: '59408-5',
+        display: 'Oxygen saturation in Arterial blood by Pulse oximetry',
+      },
+    ],
+    text: 'Oxygen saturation',
+  },
+};
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<Bundle> {
   const { input } = event;
@@ -111,37 +154,55 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     if (heartRate !== undefined && heartRate < 0) {
       throw new Error('Invalid Heart Rate');
     }
-    const heartRateObservation = createHeartRateObservation({
-      heartRate,
+    const heartRateObservation = createObservation({
       patient: patientReference,
       response: input,
       effectiveDateTime,
+      category: VITAL_SIGNS_CATEGORY,
+      code: OBSERVATIONS_CODE_MAP.heartRate,
+      valueQuantity: {
+        value: heartRate,
+        unit: 'beats/min',
+        system: UCUM,
+        code: '/min',
+      },
     });
     if (heartRateObservation) entries.push(createEntry(heartRateObservation));
 
-    const bloodPressureSystolic = answers['bloodPressureSystolic']?.valueInteger;
     const bloodPressureDiastolic = answers['bloodPressureDiastolic']?.valueInteger;
-    if (bloodPressureSystolic !== undefined && bloodPressureSystolic < 0) {
-      throw new Error('Invalid Blood Pressure Systolic');
-    }
     if (bloodPressureDiastolic !== undefined && bloodPressureDiastolic < 0) {
       throw new Error('Invalid Blood Pressure Diastolic');
     }
-    const bloodPressureObservation = createBloodPressureObservation({
-      systolic: bloodPressureSystolic,
-      diastolic: bloodPressureDiastolic,
+    const bloodPressureSystolic = answers['bloodPressureSystolic']?.valueInteger;
+    if (bloodPressureSystolic !== undefined && bloodPressureSystolic < 0) {
+      throw new Error('Invalid Blood Pressure Systolic');
+    }
+    const bloodPressureObservation = createObservation({
       patient: patientReference,
       response: input,
       effectiveDateTime,
+      category: VITAL_SIGNS_CATEGORY,
+      code: OBSERVATIONS_CODE_MAP.bloodPressure,
+      component: createBloodPressureObservationComponent({
+        diastolic: bloodPressureDiastolic,
+        systolic: bloodPressureSystolic,
+      }),
     });
     if (bloodPressureObservation) entries.push(createEntry(bloodPressureObservation));
 
     const temperature = answers['temperature']?.valueDecimal;
-    const temperatureObservation = createBodyTemperatureObservation({
-      temperature,
+    const temperatureObservation = createObservation({
       patient: patientReference,
       response: input,
       effectiveDateTime,
+      category: VITAL_SIGNS_CATEGORY,
+      code: OBSERVATIONS_CODE_MAP.bodyTemperature,
+      valueQuantity: {
+        value: temperature,
+        unit: 'F',
+        system: UCUM,
+        code: '[degF]',
+      },
     });
     if (temperatureObservation) entries.push(createEntry(temperatureObservation));
 
@@ -149,38 +210,66 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     if (respiratoryRate !== undefined && respiratoryRate < 0) {
       throw new Error('Invalid Respiratory Rate');
     }
-    const respiratoryRateObservation = createRespiratoryRateObservation({
-      respiratoryRate,
+    const respiratoryRateObservation = createObservation({
       patient: patientReference,
       response: input,
       effectiveDateTime,
+      category: VITAL_SIGNS_CATEGORY,
+      code: OBSERVATIONS_CODE_MAP.respiratoryRate,
+      valueQuantity: {
+        value: respiratoryRate,
+        unit: 'breaths/min',
+        system: UCUM,
+        code: '/min',
+      },
     });
     if (respiratoryRateObservation) entries.push(createEntry(respiratoryRateObservation));
 
     const oxygenSaturation = answers['oxygenSaturation']?.valueDecimal;
-    const oxygenSaturationObservation = createOxygenSaturationObservation({
-      oxygenSaturation,
+    const oxygenSaturationObservation = createObservation({
       patient: patientReference,
       response: input,
       effectiveDateTime,
+      category: VITAL_SIGNS_CATEGORY,
+      code: OBSERVATIONS_CODE_MAP.oxygenSaturation,
+      valueQuantity: {
+        value: oxygenSaturation,
+        unit: '%O2',
+        system: UCUM,
+        code: '%',
+      },
     });
     if (oxygenSaturationObservation) entries.push(createEntry(oxygenSaturationObservation));
 
     const height = answers['height']?.valueDecimal;
-    const heightObservation = createHeightObservation({
-      height,
+    const heightObservation = createObservation({
       patient: patientReference,
       response: input,
       effectiveDateTime,
+      category: VITAL_SIGNS_CATEGORY,
+      code: OBSERVATIONS_CODE_MAP.bodyHeight,
+      valueQuantity: {
+        value: height,
+        unit: 'in_i',
+        system: UCUM,
+        code: '[in_i]',
+      },
     });
     if (heightObservation) entries.push(createEntry(heightObservation));
 
     const weight = answers['weight']?.valueDecimal;
-    const weightObservation = createWeightObservation({
-      weight,
+    const weightObservation = createObservation({
       patient: patientReference,
       response: input,
       effectiveDateTime,
+      category: VITAL_SIGNS_CATEGORY,
+      code: OBSERVATIONS_CODE_MAP.bodyWeight,
+      valueQuantity: {
+        value: weight,
+        unit: 'lb_av',
+        system: UCUM,
+        code: '[lb_av]',
+      },
     });
     if (weightObservation) entries.push(createEntry(weightObservation));
 
@@ -193,13 +282,16 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
     // Chief Complaint
     const chiefComplaint = answers['chiefComplaint']?.valueCoding;
-    const chiefComplaintObservation = createChiefComplaintObservation({
-      chiefComplaint,
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-    });
-    if (chiefComplaintObservation) entries.push(createEntry(chiefComplaintObservation));
+    if (chiefComplaint) {
+      const chiefComplaintObservation = createObservation({
+        patient: patientReference,
+        response: input,
+        effectiveDateTime,
+        code: OBSERVATIONS_CODE_MAP.chiefComplaint,
+        valueCodeableConcept: { coding: [chiefComplaint] },
+      });
+      if (chiefComplaintObservation) entries.push(createEntry(chiefComplaintObservation));
+    }
 
     // Transfer Info
     const transferFacility = answers['transferFacility']?.valueReference;
@@ -417,6 +509,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   //   console.info(`Device responded with: ${hl7Response.toString()}`);
 }
 
+// TODO: Move these functions to a utility file
 function createEntry(resource: Resource): BundleEntry {
   return {
     resource,
@@ -429,76 +522,61 @@ function createEntry(resource: Resource): BundleEntry {
   };
 }
 
-function createChiefComplaintObservation({
-  chiefComplaint,
+function createObservation({
   patient,
   response,
   effectiveDateTime,
+  category,
+  code,
+  valueQuantity,
+  valueCodeableConcept,
+  component,
 }: {
-  chiefComplaint: Coding | undefined;
   patient: Reference<Patient>;
   response: QuestionnaireResponse;
   effectiveDateTime: string;
+  category?: CodeableConcept;
+  code: CodeableConcept;
+  valueQuantity?: Observation['valueQuantity'];
+  valueCodeableConcept?: Observation['valueCodeableConcept'];
+  component?: ObservationComponent[];
 }): Observation | undefined {
-  if (!chiefComplaint) return undefined;
+  if (!valueQuantity && !valueCodeableConcept && !component) return undefined;
 
-  const chiefComplaintObservation: Observation = {
+  const observation: Observation = {
     resourceType: 'Observation',
     status: 'final',
-    code: {
-      coding: [
-        { system: LOINC, code: '46239-0', display: 'Chief complaint' },
-        { system: SNOMED, code: '1269489004', display: 'Chief complaint' },
-      ],
-    },
     subject: patient,
     effectiveDateTime,
     derivedFrom: [createReference(response)],
-    valueCodeableConcept: { coding: [chiefComplaint] },
+    code,
   };
 
-  return chiefComplaintObservation;
+  if (category) {
+    observation.category = [category];
+  }
+
+  if (valueQuantity) {
+    observation.valueQuantity = valueQuantity;
+  } else if (valueCodeableConcept) {
+    observation.valueCodeableConcept = valueCodeableConcept;
+  }
+
+  if (component) {
+    observation.component = component;
+  }
+
+  return observation;
 }
 
-function createBloodPressureObservation({
+function createBloodPressureObservationComponent({
   diastolic,
   systolic,
-  patient,
-  response,
-  effectiveDateTime,
 }: {
-  diastolic: number | undefined;
-  systolic: number | undefined;
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-}): Observation | undefined {
-  if (!systolic && !diastolic) {
-    return undefined;
-  }
-
+  diastolic?: number;
+  systolic?: number;
+}): ObservationComponent[] {
   const components: ObservationComponent[] = [];
-
-  if (systolic) {
-    components.push({
-      code: {
-        coding: [
-          {
-            system: LOINC,
-            code: '8480-6',
-            display: 'Systolic blood pressure',
-          },
-        ],
-        text: 'Systolic blood pressure',
-      },
-      valueQuantity: {
-        value: systolic,
-        unit: 'mmHg',
-        system: UCUM,
-        code: 'mm[Hg]',
-      },
-    });
-  }
 
   if (diastolic) {
     components.push({
@@ -521,313 +599,28 @@ function createBloodPressureObservation({
     });
   }
 
-  const bloodPressureObservation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    category: [
-      {
+  if (systolic) {
+    components.push({
+      code: {
         coding: [
           {
-            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-            code: 'vital-signs',
-            display: 'Vital Signs',
+            system: LOINC,
+            code: '8480-6',
+            display: 'Systolic blood pressure',
           },
         ],
-        text: 'Vital Signs',
+        text: 'Systolic blood pressure',
       },
-    ],
-    code: {
-      coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }],
-    },
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    component: components,
-  };
-
-  return bloodPressureObservation;
-}
-
-function createHeartRateObservation({
-  heartRate,
-  patient,
-  response,
-  effectiveDateTime,
-}: {
-  heartRate: number | undefined;
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-}): Observation | undefined {
-  if (!heartRate) return undefined;
-
-  const heartRateObservation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    category: [
-      {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-            code: 'vital-signs',
-            display: 'Vital Signs',
-          },
-        ],
-        text: 'Vital Signs',
+      valueQuantity: {
+        value: systolic,
+        unit: 'mmHg',
+        system: UCUM,
+        code: 'mm[Hg]',
       },
-    ],
-    code: {
-      coding: [{ system: LOINC, code: '8867-4', display: 'Heart rate' }],
-    },
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    valueQuantity: {
-      value: heartRate,
-      unit: 'beats/min',
-      system: UCUM,
-      code: '/min',
-    },
-  };
+    });
+  }
 
-  return heartRateObservation;
-}
-
-function createRespiratoryRateObservation({
-  respiratoryRate,
-  patient,
-  response,
-  effectiveDateTime,
-}: {
-  respiratoryRate: number | undefined;
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-}): Observation | undefined {
-  if (!respiratoryRate) return undefined;
-
-  const respiratoryRateObservation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    category: [
-      {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-            code: 'vital-signs',
-            display: 'Vital Signs',
-          },
-        ],
-        text: 'Vital Signs',
-      },
-    ],
-    code: {
-      coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }],
-    },
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    valueQuantity: {
-      value: respiratoryRate,
-      unit: 'breaths/min',
-      system: UCUM,
-      code: '/min',
-    },
-  };
-
-  return respiratoryRateObservation;
-}
-
-function createBodyTemperatureObservation({
-  temperature,
-  patient,
-  response,
-  effectiveDateTime,
-}: {
-  temperature: number | undefined;
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-}): Observation | undefined {
-  if (!temperature) return undefined;
-
-  const temperatureObservation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    category: [
-      {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-            code: 'vital-signs',
-            display: 'Vital Signs',
-          },
-        ],
-        text: 'Vital Signs',
-      },
-    ],
-    code: {
-      coding: [{ system: LOINC, code: '8310-5', display: 'Body temperature' }],
-    },
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    valueQuantity: {
-      value: temperature,
-      unit: 'F',
-      system: UCUM,
-      code: '[degF]',
-    },
-  };
-
-  return temperatureObservation;
-}
-
-function createOxygenSaturationObservation({
-  oxygenSaturation,
-  patient,
-  response,
-  effectiveDateTime,
-}: {
-  oxygenSaturation: number | undefined;
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-}): Observation | undefined {
-  if (!oxygenSaturation) return undefined;
-
-  const oxygenSaturationObservation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    category: [
-      {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-            code: 'vital-signs',
-            display: 'Vital Signs',
-          },
-        ],
-        text: 'Vital Signs',
-      },
-    ],
-    code: {
-      coding: [
-        {
-          system: LOINC,
-          code: '2708-6',
-          display: 'Oxygen saturation in Arterial blood',
-        },
-        {
-          system: LOINC,
-          code: '59408-5',
-          display: 'Oxygen saturation in Arterial blood by Pulse oximetry',
-        },
-      ],
-      text: 'Oxygen saturation',
-    },
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    valueQuantity: {
-      value: oxygenSaturation,
-      unit: '%O2',
-      system: UCUM,
-      code: '%',
-    },
-  };
-
-  return oxygenSaturationObservation;
-}
-
-function createHeightObservation({
-  height,
-  patient,
-  response,
-  effectiveDateTime,
-}: {
-  height: number | undefined;
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-}): Observation | undefined {
-  if (!height) return undefined;
-
-  const heightObservation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    category: [
-      {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-            code: 'vital-signs',
-            display: 'Vital Signs',
-          },
-        ],
-        text: 'Vital Signs',
-      },
-    ],
-    code: {
-      coding: [{ system: LOINC, code: '8302-2', display: 'Body height' }],
-    },
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    valueQuantity: {
-      value: height,
-      unit: 'in_i',
-      system: UCUM,
-      code: '[in_i]',
-    },
-  };
-
-  return heightObservation;
-}
-
-function createWeightObservation({
-  weight,
-  patient,
-  response,
-  effectiveDateTime,
-}: {
-  weight: number | undefined;
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-}): Observation | undefined {
-  if (!weight) return undefined;
-
-  const weightObservation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    category: [
-      {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-            code: 'vital-signs',
-            display: 'Vital Signs',
-          },
-        ],
-        text: 'Vital Signs',
-      },
-    ],
-    code: {
-      coding: [{ system: LOINC, code: '29463-7', display: 'Body weight' }],
-    },
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    valueQuantity: {
-      value: weight,
-      unit: 'lb_av',
-      system: UCUM,
-      code: '[lb_av]',
-    },
-  };
-
-  return weightObservation;
+  return components;
 }
 
 function createAllergy({

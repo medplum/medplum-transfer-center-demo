@@ -233,16 +233,16 @@ describe('Patient Intake Bot', async () => {
     });
     expect(bloodPressureObservation).toHaveLength(1);
     expect(bloodPressureObservation[0].component).toHaveLength(2);
-    expect(bloodPressureObservation[0].component?.[0].code.coding?.[0].code).toEqual('8480-6');
+    expect(bloodPressureObservation[0].component?.[0].code.coding?.[0].code).toEqual('8462-4');
     expect(bloodPressureObservation[0].component?.[0].valueQuantity).toEqual({
-      value: 120,
+      value: 80,
       unit: 'mmHg',
       system: UCUM,
       code: 'mm[Hg]',
     });
-    expect(bloodPressureObservation[0].component?.[1].code.coding?.[0].code).toEqual('8462-4');
+    expect(bloodPressureObservation[0].component?.[1].code.coding?.[0].code).toEqual('8480-6');
     expect(bloodPressureObservation[0].component?.[1].valueQuantity).toEqual({
-      value: 80,
+      value: 120,
       unit: 'mmHg',
       system: UCUM,
       code: 'mm[Hg]',
