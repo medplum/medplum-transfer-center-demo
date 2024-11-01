@@ -27,17 +27,35 @@ describe('Patient Intake Bot', async () => {
       answer: [{ valueDate: '1958-03-19' }],
     },
     {
-      linkId: 'transferPhysPhone',
-      answer: [{ valueString: '111-222-4444' }],
-    },
-    {
-      linkId: 'transferFacility',
-      answer: [
+      linkId: 'transferInfo',
+      item: [
         {
-          valueReference: {
-            reference: 'Organization/222',
-            display: 'Acme Hospital',
-          },
+          linkId: 'transferFacility',
+          answer: [
+            {
+              valueReference: {
+                reference: 'Organization/222',
+                display: 'Acme Hospital',
+              },
+            },
+          ],
+        },
+        {
+          linkId: 'transferPhys',
+          item: [
+            {
+              linkId: 'transferPhysFirst',
+              answer: [{ valueString: 'Marie' }],
+            },
+            {
+              linkId: 'transferPhysLast',
+              answer: [{ valueString: 'Anne' }],
+            },
+            {
+              linkId: 'transferPhysPhone',
+              answer: [{ valueString: '111-222-4444' }],
+            },
+          ],
         },
       ],
     },
@@ -361,7 +379,7 @@ describe('Patient Intake Bot', async () => {
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required dateTime');
+    }).rejects.toThrow('Missing required Date/Time');
   });
 
   it('throws error on missing patient name', async () => {
@@ -374,7 +392,7 @@ describe('Patient Intake Bot', async () => {
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required patient name');
+    }).rejects.toThrow('Missing required Patient Name');
   });
 
   it('throws error on missing patient birthdate', async () => {
@@ -382,24 +400,11 @@ describe('Patient Intake Bot', async () => {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
       questionnaire: getReferenceString(questionnaire),
-      item: [
-        {
-          linkId: 'dateTime',
-          answer: [{ valueDateTime: '2024-10-23T14:30:00Z' }],
-        },
-        {
-          linkId: 'firstName',
-          answer: [{ valueString: 'Marge' }],
-        },
-        {
-          linkId: 'lastName',
-          answer: [{ valueString: 'Simpson' }],
-        },
-      ],
+      item: requiredAnswerItems.filter((item) => item.linkId !== 'birthdate'),
     };
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required patient birthdate');
+    }).rejects.toThrow('Missing required Patient Birthdate');
   });
 });
