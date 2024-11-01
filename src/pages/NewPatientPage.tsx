@@ -1,10 +1,11 @@
 import { Container } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
-import { generateId, sleep } from '@medplum/core';
+import { generateId, normalizeErrorString, sleep } from '@medplum/core';
 import { QuestionnaireResponse, QuestionnaireResponseItem, ServiceRequest } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum, useMedplumNavigate } from '@medplum/react';
 import { useCallback } from 'react';
 import { HAYS_MED_REQUISITION_SYSTEM } from '@/lib/common';
+import { IconCircleOff } from '@tabler/icons-react';
 
 const MAX_SEARCH_RETRIES = 3;
 
@@ -60,7 +61,14 @@ export function NewPatientPage(): JSX.Element {
           }
           navigate(`/ServiceRequest/${serviceRequest.id as string}`);
         })
-        .catch(console.error);
+        .catch((err) => {
+          showNotification({
+            color: 'red',
+            icon: <IconCircleOff />,
+            title: 'Error',
+            message: normalizeErrorString(err),
+          });
+        });
     },
     [medplum, navigate]
   );
