@@ -15,16 +15,21 @@ describe('Patient Intake Bot', async () => {
       answer: [{ valueDateTime: '2024-10-23T14:30:00Z' }],
     },
     {
-      linkId: 'firstName',
-      answer: [{ valueString: 'Marge' }],
-    },
-    {
-      linkId: 'lastName',
-      answer: [{ valueString: 'Simpson' }],
-    },
-    {
-      linkId: 'birthdate',
-      answer: [{ valueDate: '1958-03-19' }],
+      linkId: 'patientInfo',
+      item: [
+        {
+          linkId: 'firstName',
+          answer: [{ valueString: 'Marge' }],
+        },
+        {
+          linkId: 'lastName',
+          answer: [{ valueString: 'Simpson' }],
+        },
+        {
+          linkId: 'birthdate',
+          answer: [{ valueDate: '1958-03-19' }],
+        },
+      ],
     },
     {
       linkId: 'transferInfo',
@@ -84,6 +89,19 @@ describe('Patient Intake Bot', async () => {
     };
   }
 
+  function removeItemsRecursively(items: QuestionnaireResponseItem[], linkIds: string[]): QuestionnaireResponseItem[] {
+    return items.reduce((filteredItems, { linkId, item, ...rest }) => {
+      if (!linkIds.includes(linkId)) {
+        filteredItems.push({
+          ...rest,
+          linkId,
+          item: item ? removeItemsRecursively(item, linkIds) : undefined,
+        });
+      }
+      return filteredItems;
+    }, [] as QuestionnaireResponseItem[]);
+  }
+
   it('successfully creates resources', async () => {
     const input: QuestionnaireResponse = createInput([
       {
@@ -105,18 +123,6 @@ describe('Patient Intake Bot', async () => {
       {
         linkId: 'postalCode',
         answer: [{ valueString: '95008' }],
-      },
-      {
-        linkId: 'chiefComplaint',
-        answer: [
-          {
-            valueCoding: {
-              system: ICD10,
-              code: 'I50',
-              display: 'Heart failure',
-            },
-          },
-        ],
       },
       {
         linkId: 'vitalSigns',
@@ -183,6 +189,23 @@ describe('Patient Intake Bot', async () => {
                   system: SNOMED,
                   code: '256259004',
                   display: 'Pollen (substance)',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        linkId: 'transferInfo',
+        item: [
+          {
+            linkId: 'chiefComplaint',
+            answer: [
+              {
+                valueCoding: {
+                  system: ICD10,
+                  code: 'I50',
+                  display: 'Heart failure',
                 },
               },
             ],
@@ -369,12 +392,25 @@ describe('Patient Intake Bot', async () => {
     }).rejects.toThrow('Invalid questionnaire');
   });
 
+  it('throws error on missing requisitionId', async () => {
+    const input: QuestionnaireResponse = {
+      resourceType: 'QuestionnaireResponse',
+      status: 'completed',
+      questionnaire: getReferenceString(questionnaire),
+      item: removeItemsRecursively(requiredAnswerItems, ['requisitionId']),
+    };
+
+    await expect(async () => {
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+    }).rejects.toThrow('Missing required requisitionId');
+  });
+
   it('throws error on missing dateTime', async () => {
     const input: QuestionnaireResponse = {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
       questionnaire: getReferenceString(questionnaire),
-      item: requiredAnswerItems.filter((item) => item.linkId !== 'dateTime'),
+      item: removeItemsRecursively(requiredAnswerItems, ['dateTime']),
     };
 
     await expect(async () => {
@@ -387,7 +423,7 @@ describe('Patient Intake Bot', async () => {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
       questionnaire: getReferenceString(questionnaire),
-      item: requiredAnswerItems.filter((item) => item.linkId !== 'firstName' && item.linkId !== 'lastName'),
+      item: removeItemsRecursively(requiredAnswerItems, ['firstName', 'lastName']),
     };
 
     await expect(async () => {
@@ -400,11 +436,37 @@ describe('Patient Intake Bot', async () => {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
       questionnaire: getReferenceString(questionnaire),
-      item: requiredAnswerItems.filter((item) => item.linkId !== 'birthdate'),
+      item: removeItemsRecursively(requiredAnswerItems, ['birthdate']),
     };
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
     }).rejects.toThrow('Missing required Patient Birthdate');
+  });
+
+  it('throws error on missing transferring physician name', async () => {
+    const input: QuestionnaireResponse = {
+      resourceType: 'QuestionnaireResponse',
+      status: 'completed',
+      questionnaire: getReferenceString(questionnaire),
+      item: removeItemsRecursively(requiredAnswerItems, ['transferPhysFirst', 'transferPhysLast']),
+    };
+
+    await expect(async () => {
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+    }).rejects.toThrow('Missing required Transferring Physician Name');
+  });
+
+  it('throws error on missing transferring physician phone', async () => {
+    const input: QuestionnaireResponse = {
+      resourceType: 'QuestionnaireResponse',
+      status: 'completed',
+      questionnaire: getReferenceString(questionnaire),
+      item: removeItemsRecursively(requiredAnswerItems, ['transferPhysPhone']),
+    };
+
+    await expect(async () => {
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+    }).rejects.toThrow('Missing required Transferring Physician Phone');
   });
 });

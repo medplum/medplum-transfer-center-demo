@@ -314,7 +314,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
     const transferPhysPhone = answers['transferPhysPhone']?.valueString;
     if (!transferPhysPhone) {
-      throw new Error('Missing required Transfer Physician Phone');
+      throw new Error('Missing required Transferring Physician Phone');
     }
     transferringPhysician.telecom = [{ system: 'phone', value: transferPhysPhone }];
 
