@@ -1,4 +1,4 @@
-import { generateId, getReferenceString, ICD10, LOINC, SNOMED, UCUM } from '@medplum/core';
+import { createReference, generateId, getReferenceString, ICD10, LOINC, SNOMED, UCUM } from '@medplum/core';
 import { Patient, Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
 import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
@@ -159,6 +159,10 @@ describe('Patient Intake Bot', async () => {
             linkId: 'weight',
             answer: [{ valueDecimal: 133 }],
           },
+          {
+            linkId: 'vitalSignsComments',
+            answer: [{ valueString: 'Pay attention to the heart rate' }],
+          },
         ],
       },
       {
@@ -199,6 +203,18 @@ describe('Patient Intake Bot', async () => {
         linkId: 'transferInfo',
         item: [
           {
+            linkId: 'timeSensitiveDiagnosis',
+            answer: [
+              {
+                valueCoding: {
+                  system: SNOMED,
+                  code: '401303003',
+                  display: 'STEMI',
+                },
+              },
+            ],
+          },
+          {
             linkId: 'chiefComplaint',
             answer: [
               {
@@ -233,7 +249,22 @@ describe('Patient Intake Bot', async () => {
       },
     ]);
 
-    // Chief Complaint
+    // Diagnosis
+    const timeSensitiveDiagnosisObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|78026-2`,
+    });
+    expect(timeSensitiveDiagnosisObservation).toHaveLength(1);
+    expect(timeSensitiveDiagnosisObservation[0].valueCodeableConcept).toEqual({
+      coding: [
+        {
+          system: SNOMED,
+          code: '401303003',
+          display: 'STEMI',
+        },
+      ],
+    });
+
     const chiefComplaintObservation = await medplum.searchResources('Observation', {
       subject: getReferenceString(patient),
       code: `${LOINC}|46239-0`,
@@ -342,6 +373,25 @@ describe('Patient Intake Bot', async () => {
       system: UCUM,
       code: '[lb_av]',
     });
+
+    const vitalSignsPanelObservation = await medplum.searchResources('Observation', {
+      subject: getReferenceString(patient),
+      code: `${LOINC}|85353-1`,
+    });
+    expect(vitalSignsPanelObservation).toHaveLength(1);
+    expect(vitalSignsPanelObservation[0].note?.[0].text).toEqual('Pay attention to the heart rate');
+    expect(vitalSignsPanelObservation[0].hasMember).toHaveLength(7);
+    expect(vitalSignsPanelObservation[0].hasMember).toEqual(
+      expect.arrayContaining([
+        createReference(bloodPressureObservation[0]),
+        createReference(temperatureObservation[0]),
+        createReference(heartRateObservation[0]),
+        createReference(respiratoryRateObservation[0]),
+        createReference(oxygenSaturationObservation[0]),
+        createReference(heightObservation[0]),
+        createReference(weightObservation[0]),
+      ])
+    );
 
     // Allergies
     const allergies = await medplum.searchResources('AllergyIntolerance', {

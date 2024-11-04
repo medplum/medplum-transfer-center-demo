@@ -6,6 +6,7 @@ import {
   UCUM,
   createReference,
   getAllQuestionnaireAnswers,
+  getDisplayString,
   getQuestionnaireAnswers,
   resolveId,
 } from '@medplum/core';
@@ -54,7 +55,6 @@ const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
     ],
   },
   heartRate: { coding: [{ system: LOINC, code: '8867-4', display: 'Heart rate' }] },
-  respiratoryRate: { coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }] },
   oxygenSaturation: {
     coding: [
       {
@@ -70,6 +70,9 @@ const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
     ],
     text: 'Oxygen saturation',
   },
+  respiratoryRate: { coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }] },
+  timeSensitiveDiagnosis: { coding: [{ system: LOINC, code: '78026-2', display: 'Time sensitive diagnosis' }] }, // Diagnosis present on admission
+  vitalSignsPanel: { coding: [{ system: LOINC, code: '85353-1', display: 'Vital signs panel' }] },
 };
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<Bundle> {
@@ -147,7 +150,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
     const patientEntry = createEntry(patient);
     entries.push(patientEntry);
-    const patientReference = { ...createReference(patientEntry.resource as Patient), reference: patientEntry.fullUrl };
+    const patientReference = createEntryReference(patientEntry) as Reference<Patient>;
 
     // Vital Signs
     const heartRate = answers['heartRate']?.valueInteger;
@@ -167,7 +170,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '/min',
       },
     });
-    if (heartRateObservation) entries.push(createEntry(heartRateObservation));
+    const heartRateObservationEntry = heartRateObservation ? createEntry(heartRateObservation) : undefined;
+    if (heartRateObservationEntry) entries.push(heartRateObservationEntry);
 
     const bloodPressureDiastolic = answers['bloodPressureDiastolic']?.valueInteger;
     if (bloodPressureDiastolic !== undefined && bloodPressureDiastolic < 0) {
@@ -188,7 +192,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         systolic: bloodPressureSystolic,
       }),
     });
-    if (bloodPressureObservation) entries.push(createEntry(bloodPressureObservation));
+    const bloodPressureObservationEntry = bloodPressureObservation ? createEntry(bloodPressureObservation) : undefined;
+    if (bloodPressureObservationEntry) entries.push(bloodPressureObservationEntry);
 
     const temperature = answers['temperature']?.valueDecimal;
     const temperatureObservation = createObservation({
@@ -204,7 +209,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[degF]',
       },
     });
-    if (temperatureObservation) entries.push(createEntry(temperatureObservation));
+    const temperatureObservationEntry = temperatureObservation ? createEntry(temperatureObservation) : undefined;
+    if (temperatureObservationEntry) entries.push(temperatureObservationEntry);
 
     const respiratoryRate = answers['respiratoryRate']?.valueDecimal;
     if (respiratoryRate !== undefined && respiratoryRate < 0) {
@@ -223,7 +229,10 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '/min',
       },
     });
-    if (respiratoryRateObservation) entries.push(createEntry(respiratoryRateObservation));
+    const respiratoryRateObservationEntry = respiratoryRateObservation
+      ? createEntry(respiratoryRateObservation)
+      : undefined;
+    if (respiratoryRateObservationEntry) entries.push(respiratoryRateObservationEntry);
 
     const oxygenSaturation = answers['oxygenSaturation']?.valueDecimal;
     const oxygenSaturationObservation = createObservation({
@@ -239,7 +248,10 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '%',
       },
     });
-    if (oxygenSaturationObservation) entries.push(createEntry(oxygenSaturationObservation));
+    const oxygenSaturationObservationEntry = oxygenSaturationObservation
+      ? createEntry(oxygenSaturationObservation)
+      : undefined;
+    if (oxygenSaturationObservationEntry) entries.push(oxygenSaturationObservationEntry);
 
     const height = answers['height']?.valueDecimal;
     const heightObservation = createObservation({
@@ -255,7 +267,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[in_i]',
       },
     });
-    if (heightObservation) entries.push(createEntry(heightObservation));
+    const heightObservationEntry = heightObservation ? createEntry(heightObservation) : undefined;
+    if (heightObservationEntry) entries.push(heightObservationEntry);
 
     const weight = answers['weight']?.valueDecimal;
     const weightObservation = createObservation({
@@ -271,7 +284,35 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[lb_av]',
       },
     });
-    if (weightObservation) entries.push(createEntry(weightObservation));
+    const weightObservationEntry = weightObservation ? createEntry(weightObservation) : undefined;
+    if (weightObservationEntry) entries.push(weightObservationEntry);
+
+    // Create a panel observation for all vital signs if comments or other observations are present
+    const vitalSignsComments = answers['vitalSignsComments']?.valueString;
+    const vitalSignsHasMember = [
+      heartRateObservationEntry,
+      bloodPressureObservationEntry,
+      temperatureObservationEntry,
+      respiratoryRateObservationEntry,
+      oxygenSaturationObservationEntry,
+      heightObservationEntry,
+      weightObservationEntry,
+    ]
+      .filter((observationEntry) => observationEntry !== undefined)
+      .map((observationEntry) => createEntryReference(observationEntry));
+
+    if (vitalSignsComments || vitalSignsHasMember) {
+      const vitalSignsPanelObservation = createObservation({
+        patient: patientReference,
+        response: input,
+        effectiveDateTime,
+        code: OBSERVATIONS_CODE_MAP.vitalSignsPanel,
+        valueCodeableConcept: { text: vitalSignsComments },
+        hasMember: vitalSignsHasMember as Reference<Observation>[],
+        note: vitalSignsComments,
+      });
+      if (vitalSignsPanelObservation) entries.push(createEntry(vitalSignsPanelObservation));
+    }
 
     // Allergies
     const allergyAnswers = getAllQuestionnaireAnswers(input)['allergySubstance'] || [];
@@ -280,7 +321,19 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       if (allergy) entries.push(createEntry(allergy));
     }
 
-    // Chief Complaint
+    // Diagnosis
+    const timeSensitiveDiagnosis = answers['timeSensitiveDiagnosis']?.valueCoding;
+    if (timeSensitiveDiagnosis) {
+      const diagnosisObservation = createObservation({
+        patient: patientReference,
+        response: input,
+        effectiveDateTime,
+        code: OBSERVATIONS_CODE_MAP.timeSensitiveDiagnosis,
+        valueCodeableConcept: { coding: [timeSensitiveDiagnosis] },
+      });
+      if (diagnosisObservation) entries.push(createEntry(diagnosisObservation));
+    }
+
     const chiefComplaint = answers['chiefComplaint']?.valueCoding;
     if (chiefComplaint) {
       const chiefComplaintObservation = createObservation({
@@ -319,10 +372,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     transferringPhysician.telecom = [{ system: 'phone', value: transferPhysPhone }];
 
     const transferringPhysicianEntry = createEntry(transferringPhysician);
-    const transferringPhysicianReference = {
-      ...createReference(transferringPhysician),
-      reference: transferringPhysicianEntry.fullUrl,
-    };
+    const transferringPhysicianReference = createEntryReference(transferringPhysicianEntry) as Reference<Practitioner>;
     entries.push(transferringPhysicianEntry);
     entries.push(
       createEntry({
@@ -350,7 +400,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       authoredOn: new Date().toISOString(),
     };
     const serviceRequestEntry = createEntry(serviceRequest);
-    const serviceRequestReference = { ...createReference(serviceRequest), reference: serviceRequestEntry.fullUrl };
+    const serviceRequestReference = createEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
     entries.push(serviceRequestEntry);
 
     // Create communication request for call between transferring and accepting physicians
@@ -363,10 +413,9 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       basedOn: [serviceRequestReference],
     };
     const communicationRequestEntry = createEntry(communicationRequest);
-    const communicationRequestReference = {
-      ...createReference(communicationRequest),
-      reference: communicationRequestEntry.fullUrl,
-    };
+    const communicationRequestReference = createEntryReference(
+      communicationRequestEntry
+    ) as Reference<CommunicationRequest>;
     entries.push(communicationRequestEntry);
 
     // Create a Task for the call
@@ -522,6 +571,13 @@ function createEntry(resource: Resource): BundleEntry {
   };
 }
 
+function createEntryReference(entry: BundleEntry): Reference<Resource> | undefined {
+  return {
+    display: entry.resource ? getDisplayString(entry.resource) : undefined,
+    reference: entry.fullUrl,
+  };
+}
+
 function createObservation({
   patient,
   response,
@@ -531,6 +587,8 @@ function createObservation({
   valueQuantity,
   valueCodeableConcept,
   component,
+  hasMember,
+  note,
 }: {
   patient: Reference<Patient>;
   response: QuestionnaireResponse;
@@ -540,8 +598,10 @@ function createObservation({
   valueQuantity?: Observation['valueQuantity'];
   valueCodeableConcept?: Observation['valueCodeableConcept'];
   component?: ObservationComponent[];
+  note?: string;
+  hasMember?: Observation['hasMember'];
 }): Observation | undefined {
-  if (!valueQuantity && !valueCodeableConcept && !component) return undefined;
+  if (!valueQuantity && !valueCodeableConcept && !component && !note) return undefined;
 
   const observation: Observation = {
     resourceType: 'Observation',
@@ -550,20 +610,16 @@ function createObservation({
     effectiveDateTime,
     derivedFrom: [createReference(response)],
     code,
+    category: category ? [category] : undefined,
+    component,
+    note: note ? [{ text: note, time: effectiveDateTime }] : undefined,
+    hasMember,
   };
-
-  if (category) {
-    observation.category = [category];
-  }
 
   if (valueQuantity) {
     observation.valueQuantity = valueQuantity;
   } else if (valueCodeableConcept) {
     observation.valueCodeableConcept = valueCodeableConcept;
-  }
-
-  if (component) {
-    observation.component = component;
   }
 
   return observation;
