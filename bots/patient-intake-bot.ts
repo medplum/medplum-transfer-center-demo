@@ -6,6 +6,7 @@ import {
   UCUM,
   createReference,
   getAllQuestionnaireAnswers,
+  getDisplayString,
   getQuestionnaireAnswers,
   resolveId,
 } from '@medplum/core';
@@ -54,7 +55,6 @@ const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
     ],
   },
   heartRate: { coding: [{ system: LOINC, code: '8867-4', display: 'Heart rate' }] },
-  respiratoryRate: { coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }] },
   oxygenSaturation: {
     coding: [
       {
@@ -70,6 +70,9 @@ const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
     ],
     text: 'Oxygen saturation',
   },
+  respiratoryRate: { coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }] },
+  timeSensitiveDiagnosis: { coding: [{ system: LOINC, code: '78026-2', display: 'Time sensitive diagnosis' }] }, // Diagnosis present on admission
+  vitalSignsPanel: { coding: [{ system: LOINC, code: '85353-1', display: 'Vital signs panel' }] },
 };
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<Bundle> {
@@ -147,7 +150,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
     const patientEntry = createEntry(patient);
     entries.push(patientEntry);
-    const patientReference = { ...createReference(patientEntry.resource as Patient), reference: patientEntry.fullUrl };
+    const patientReference = createEntryReference(patientEntry) as Reference<Patient>;
 
     // Vital Signs
     const heartRate = answers['heartRate']?.valueInteger;
@@ -167,7 +170,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '/min',
       },
     });
-    if (heartRateObservation) entries.push(createEntry(heartRateObservation));
+    const heartRateObservationEntry = heartRateObservation ? createEntry(heartRateObservation) : undefined;
+    if (heartRateObservationEntry) entries.push(heartRateObservationEntry);
 
     const bloodPressureDiastolic = answers['bloodPressureDiastolic']?.valueInteger;
     if (bloodPressureDiastolic !== undefined && bloodPressureDiastolic < 0) {
@@ -188,7 +192,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         systolic: bloodPressureSystolic,
       }),
     });
-    if (bloodPressureObservation) entries.push(createEntry(bloodPressureObservation));
+    const bloodPressureObservationEntry = bloodPressureObservation ? createEntry(bloodPressureObservation) : undefined;
+    if (bloodPressureObservationEntry) entries.push(bloodPressureObservationEntry);
 
     const temperature = answers['temperature']?.valueDecimal;
     const temperatureObservation = createObservation({
@@ -204,7 +209,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[degF]',
       },
     });
-    if (temperatureObservation) entries.push(createEntry(temperatureObservation));
+    const temperatureObservationEntry = temperatureObservation ? createEntry(temperatureObservation) : undefined;
+    if (temperatureObservationEntry) entries.push(temperatureObservationEntry);
 
     const respiratoryRate = answers['respiratoryRate']?.valueDecimal;
     if (respiratoryRate !== undefined && respiratoryRate < 0) {
@@ -223,7 +229,10 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '/min',
       },
     });
-    if (respiratoryRateObservation) entries.push(createEntry(respiratoryRateObservation));
+    const respiratoryRateObservationEntry = respiratoryRateObservation
+      ? createEntry(respiratoryRateObservation)
+      : undefined;
+    if (respiratoryRateObservationEntry) entries.push(respiratoryRateObservationEntry);
 
     const oxygenSaturation = answers['oxygenSaturation']?.valueDecimal;
     const oxygenSaturationObservation = createObservation({
@@ -239,7 +248,10 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '%',
       },
     });
-    if (oxygenSaturationObservation) entries.push(createEntry(oxygenSaturationObservation));
+    const oxygenSaturationObservationEntry = oxygenSaturationObservation
+      ? createEntry(oxygenSaturationObservation)
+      : undefined;
+    if (oxygenSaturationObservationEntry) entries.push(oxygenSaturationObservationEntry);
 
     const height = answers['height']?.valueDecimal;
     const heightObservation = createObservation({
@@ -255,7 +267,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[in_i]',
       },
     });
-    if (heightObservation) entries.push(createEntry(heightObservation));
+    const heightObservationEntry = heightObservation ? createEntry(heightObservation) : undefined;
+    if (heightObservationEntry) entries.push(heightObservationEntry);
 
     const weight = answers['weight']?.valueDecimal;
     const weightObservation = createObservation({
@@ -271,7 +284,35 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[lb_av]',
       },
     });
-    if (weightObservation) entries.push(createEntry(weightObservation));
+    const weightObservationEntry = weightObservation ? createEntry(weightObservation) : undefined;
+    if (weightObservationEntry) entries.push(weightObservationEntry);
+
+    // Create a panel observation for all vital signs if comments or other observations are present
+    const vitalSignsComments = answers['vitalSignsComments']?.valueString;
+    const vitalSignsHasMember = [
+      heartRateObservationEntry,
+      bloodPressureObservationEntry,
+      temperatureObservationEntry,
+      respiratoryRateObservationEntry,
+      oxygenSaturationObservationEntry,
+      heightObservationEntry,
+      weightObservationEntry,
+    ]
+      .filter((observationEntry) => observationEntry !== undefined)
+      .map((observationEntry) => createEntryReference(observationEntry));
+
+    if (vitalSignsComments || vitalSignsHasMember) {
+      const vitalSignsPanelObservation = createObservation({
+        patient: patientReference,
+        response: input,
+        effectiveDateTime,
+        code: OBSERVATIONS_CODE_MAP.vitalSignsPanel,
+        valueCodeableConcept: { text: vitalSignsComments },
+        hasMember: vitalSignsHasMember as Reference<Observation>[],
+        note: vitalSignsComments,
+      });
+      if (vitalSignsPanelObservation) entries.push(createEntry(vitalSignsPanelObservation));
+    }
 
     // Allergies
     const allergyAnswers = getAllQuestionnaireAnswers(input)['allergySubstance'] || [];
@@ -280,7 +321,19 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       if (allergy) entries.push(createEntry(allergy));
     }
 
-    // Chief Complaint
+    // Diagnosis
+    const timeSensitiveDiagnosis = answers['timeSensitiveDiagnosis']?.valueCoding;
+    if (timeSensitiveDiagnosis) {
+      const diagnosisObservation = createObservation({
+        patient: patientReference,
+        response: input,
+        effectiveDateTime,
+        code: OBSERVATIONS_CODE_MAP.timeSensitiveDiagnosis,
+        valueCodeableConcept: { coding: [timeSensitiveDiagnosis] },
+      });
+      if (diagnosisObservation) entries.push(createEntry(diagnosisObservation));
+    }
+
     const chiefComplaint = answers['chiefComplaint']?.valueCoding;
     if (chiefComplaint) {
       const chiefComplaintObservation = createObservation({
@@ -319,10 +372,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     transferringPhysician.telecom = [{ system: 'phone', value: transferPhysPhone }];
 
     const transferringPhysicianEntry = createEntry(transferringPhysician);
-    const transferringPhysicianReference = {
-      ...createReference(transferringPhysician),
-      reference: transferringPhysicianEntry.fullUrl,
-    };
+    const transferringPhysicianReference = createEntryReference(transferringPhysicianEntry) as Reference<Practitioner>;
     entries.push(transferringPhysicianEntry);
     entries.push(
       createEntry({
@@ -350,7 +400,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       authoredOn: new Date().toISOString(),
     };
     const serviceRequestEntry = createEntry(serviceRequest);
-    const serviceRequestReference = { ...createReference(serviceRequest), reference: serviceRequestEntry.fullUrl };
+    const serviceRequestReference = createEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
     entries.push(serviceRequestEntry);
 
     // Create communication request for call between transferring and accepting physicians
@@ -363,10 +413,9 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       basedOn: [serviceRequestReference],
     };
     const communicationRequestEntry = createEntry(communicationRequest);
-    const communicationRequestReference = {
-      ...createReference(communicationRequest),
-      reference: communicationRequestEntry.fullUrl,
-    };
+    const communicationRequestReference = createEntryReference(
+      communicationRequestEntry
+    ) as Reference<CommunicationRequest>;
     entries.push(communicationRequestEntry);
 
     // Create a Task for the call
@@ -404,109 +453,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   });
 
   return responseBundle;
-
-  // Create an encounter to track the Patient's location
-  // await medplum.createResource({
-  //   resourceType: 'Encounter',
-  //   status: 'arrived',
-  //   class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
-  //   subject: createReference(patient),
-  //   location: [
-  //     {
-  //       location: createReference(results.nextAvailableRoom),
-  //       status: 'active',
-  //     },
-  //   ],
-  // });
-
-  // // Mark room as occupied
-  // await medplum.patchResource('Location', results.nextAvailableRoom.id as string, [
-  //   {
-  //     op: 'replace',
-  //     path: '/operationalStatus',
-  //     value: { system: 'http://terminology.hl7.org/CodeSystem/v2-0116', code: 'O', display: 'Occupied' },
-  //   },
-  // ]);
-
-  //   const bot = await medplum.readReference(event.bot);
-
-  //   const agentRef = bot.extension?.find((ext) => ext.url === 'https://medplum.com/experimental/agent-reference')
-  //     ?.valueReference as Reference<Agent> | undefined;
-
-  //   if (!agentRef) {
-  //     throw new Error("Valid Agent reference not found in extension 'https://medplum.com/experimental/agent-reference'");
-  //   }
-
-  //   const deviceRef = bot.extension?.find((ext) => ext.url === 'https://medplum.com/experimental/device-reference')
-  //     ?.valueReference as Reference<Device> | undefined;
-
-  //   if (!deviceRef) {
-  //     throw new Error(
-  //       "Valid Device reference not found in extension 'https://medplum.com/experimental/device-reference'"
-  //     );
-  //   }
-
-  //   console.info(`Sending ADT^A01 to ${getReferenceString(deviceRef)} via ${getReferenceString(agentRef)}`);
-
-  //   const response = await medplum.pushToAgent(
-  //     agentRef,
-  //     deviceRef,
-  //     `MSH|^~\\&|MT ADM||OV ENG|OV ENG FAC|200912231035||ADT^A01^ADT_A01|312424|D|2.4|||AL|NE|
-  // EVN||200912231035|||MT^MEDPLUM|200912231033|
-  // PID|1||M000000282^^^^MR^ACH00-99-0000^^^^SS^ACH1-20091223103443^^^^PI^ACH 00000331^^^^HUB^ACH||${
-  //       results.patient.name[0].family.toUpperCase() as string
-  //     }^${
-  //       results.patient.name[0].given.join(' ').toUpperCase() as string
-  //     }^U^^^^L||19861220|M||C|900 BILL BLVD^^CONWAY^AR^77777||777-888-9999|9990001111||S|CAT|D00000001057|
-  // NK1|1|FAKE^CLAUDE|FRI^Friend|1 BILL BLVD^^CONWAY^AR^77777|999-000-1111||NOK|
-  // NK1|2|FAKE^MILAN|FRI^Friend|455 BILL BLVD^^CONWAY^AR^77777|999-111-0000||NOT|
-  // NK1|3|ACEHARDWAR||1 MAIN STREET^^LITTLE ROCK^^55555||9990001111|EMP|||CLERK|||ACE HARDWARE|||||||||||||||||||||FT|
-  // PV1|1|I|SGYOTH^${
-  //       results.nextAvailableRoom.name as string
-  //     }^A|EMER|||ANG^DOCTOR^SYLVIA^^^^M.D.^^^^^^XX|||CAR||||SELF|||BEA^BEAU^FAKE^L.^^^M.D.^^^^^^XX|IN||BC|||||||||||||||||||DCH||ADM|||2009 12231033||||||||BRAJA^FAKE^JAMES^E^^^M.D.^^^^^^XX|
-  // PV2||SGYOTH^3E Surgical Oth|CHEST PAINS|||||||2|1||||||||||||||EMER|20080304||||||||||N|
-  // ROL|1|AD|AT|ANG^DOCTOR^SYLVIA^^^^M.D.^^^^^^XX|
-  // ROL|2|AD|AD|BEA^BEAU^FAKE^L.^^^M.D.^^^^^^XX|
-  // ROL|3|AD|FHCP|BRAJA^FAKE^JAMES^E^^^M.D.^^^^^^XX|
-  // ROL|4|AD|PP|NJ^DOCTOR^NEW JERSEY^P.^^^M.D.^^^^^^XX|
-  // ROL|5|AD|CP|ANP^AFAKENAME^PAUL^J.^^^M.D.^^^^^^XX|
-  // OBX|1|TX|ADM.ACC^ACCIDENT DESCRIPTION^ADM||CAR REAR ENDED||||||F|
-  // OBX|2|CE|ADM.ACCF^ACCIDENT FORM COMPLETED^ADM||Y^Y||||||F|
-  // OBX|3|CE|ADM.CAR^What type of child passenger seat do you currently utilize?^ADM||DUA^Don't Use Anything||||||F|
-  // OBX|4|CE|ADM.CARH2^safety seats?^ADM||PNA^Parent Not Available||||||F|
-  // OBX|5|TX|ADM.COUNTY^County of Residence^ADM||LIN||||||F|
-  // OBX|6|TX|ADM.FDBC4^alarms in your home?^ADM||N||||||F|
-  // OBX|7|TX|ADM.GDOB^Guarantor DOB:^ADM||19861220||||||F|
-  // OBX|8|TX|ADM.INCON^Consent Signed, Relationship^ADM||Y||||||F|
-  // OBX|9|CE|ADM.LW^Age 18 or Older, Living Will Info Presented?^ADM||NA^NA||||||F|
-  // OBX|10|TX|ADM.LWF^Living Will on File?^ADM||N||||||F|
-  // OBX|11|TX|ADM.LWH^If No, Is Help Needed in Writing a Living Will?^ADM||N||||||F|
-  // OBX|12|TX|ADM.PARREF^Parent refused to add patient to policy^ADM||N||||||F|
-  // OBX|13|TX|ADM.RES^Team Resident^ADM||ANDP||||||F|
-  // OBX|14|CE|ADM.RISK^Risk Indicator^ADM||MUD^UNRELATED DONOR||||||F|
-  // OBX|15|TX|ADM.TRAU^Trauma?^ADM||N||||||F|
-  // OBX|16|TX|ADM.TRN^Transplant Donor Account Number^ADM||9088889999||||||F|
-  // OBX|17|TX|ADM USCIT^Patient U.S. Citizen^INS^^^BC/BS||Y||||||F|
-  // OBX|18|TX|BAR ELIG^BAR Eligibilty Check^INS^^^BC/BS||||||||F|
-  // AL1|1|DA|X1175^Naphazoline^^From 20/20 Eye Drops^^allergy.id|MI||20091223|
-  // AL1|2|DA|X1271^Zinc^^From 20/20 Eye Drops^^allergy.id|MI||20091223|
-  // AL1|3|DA|X13480^Mineral, Zinc^^From 20/20 Eye Drops^^allergy.id|MI||20091223|
-  // AL1|4|DA|X737^Glycerin^^From 20/20 Eye Drops^^allergy.id|MI||20091223|
-  // DG1|1||004.2^SHIGELLA BOYDII^I9|||Other|
-  // GT1|1||FAKE^PATIENT^U||900 BILL BLVD^^CONWAY^AR^77777|999-888-0000|||||S|999-00-0000||||ACEHARDWAR|1 MAIN STREET^^LITTLE ROCK^AK^55555|9990001111|
-  // IN1|1|BC/BS||BLUE CROSS/BLUE SHIELD|PO BOX 2181^^LITTLE ROCK^AR^72203-2181||(501)378-2307|9098AAAAS|ACE HARDWARE||ACEHARDWAR|20090101|20091231|||FAKE^PATIENT^U|S|19861220|900 BILL BLVD^^CONWAY^AR^77777||||||||||20091223|MT||||||123456789||||||FT^Employed Full Time|M|^^LITTLE ROCK|VERIFIED|
-  // IN2|1|999-00-0000|||||||||||||||||||||||||||||||Y|||||||||C|S||||||||||||||||||||999-888-0000|
-  // IN3|1|CERTIFICATE NUMBER 123||||20130819|||20130819|20140819|
-  // IN1|2|BHC||BUYER'S HEALTHCARE COALITION|P.O. BOX 150500^^NASHVILLE^TN^37215||800-366-9768|90OPOAOSAAABOO1|ACE HARDWARE||ACEHARDWAR|20090601|20091231|||FAKE^PATIENT^U|S|19861220|900 BILL CLINTON BLVD^^CONWAY^AR^77777||||||||||20091223|MT||||||90000TTTTATTATATAT||||||FT^Employed Full Time|M|^^LITTLE ROCK|VERIFIED|
-  // IN2|2|999-00-0000|||||||||||||||||||||||||||||||Y|||||||||C|S||||||||||||||||||||999-888-0000|
-  // IN3|1|CERTIFICATE NUMBER 222||||20130819|||20130819|20140819|
-  // UB2|1||||||01^20091222|`,
-  //     ContentType.HL7_V2,
-  //     true
-  //   );
-
-  //   const hl7Response = Hl7Message.parse(response as string);
-  //   console.info(`Device responded with: ${hl7Response.toString()}`);
 }
 
 // TODO: Move these functions to a utility file
@@ -522,6 +468,13 @@ function createEntry(resource: Resource): BundleEntry {
   };
 }
 
+function createEntryReference(entry: BundleEntry): Reference<Resource> | undefined {
+  return {
+    display: entry.resource ? getDisplayString(entry.resource) : undefined,
+    reference: entry.fullUrl,
+  };
+}
+
 function createObservation({
   patient,
   response,
@@ -531,6 +484,8 @@ function createObservation({
   valueQuantity,
   valueCodeableConcept,
   component,
+  hasMember,
+  note,
 }: {
   patient: Reference<Patient>;
   response: QuestionnaireResponse;
@@ -540,8 +495,10 @@ function createObservation({
   valueQuantity?: Observation['valueQuantity'];
   valueCodeableConcept?: Observation['valueCodeableConcept'];
   component?: ObservationComponent[];
+  note?: string;
+  hasMember?: Observation['hasMember'];
 }): Observation | undefined {
-  if (!valueQuantity && !valueCodeableConcept && !component) return undefined;
+  if (!valueQuantity && !valueCodeableConcept && !component && !note) return undefined;
 
   const observation: Observation = {
     resourceType: 'Observation',
@@ -550,20 +507,16 @@ function createObservation({
     effectiveDateTime,
     derivedFrom: [createReference(response)],
     code,
+    category: category ? [category] : undefined,
+    component,
+    note: note ? [{ text: note, time: effectiveDateTime }] : undefined,
+    hasMember,
   };
-
-  if (category) {
-    observation.category = [category];
-  }
 
   if (valueQuantity) {
     observation.valueQuantity = valueQuantity;
   } else if (valueCodeableConcept) {
     observation.valueCodeableConcept = valueCodeableConcept;
-  }
-
-  if (component) {
-    observation.component = component;
   }
 
   return observation;
