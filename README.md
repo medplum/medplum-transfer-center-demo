@@ -73,3 +73,13 @@ To build the app, run:
 ```bash
 npm run build
 ```
+
+## Upserting core data
+
+To upsert core data, run:
+
+```bash
+npx medplum post '' "$(cat path/to/bundle.json)" # e.g.: npx medplum post '' "$(cat data/core/core-data.json)"
+```
+
+This will upsert core data, such as ValueSets and Questionnaires, into the Medplum server.
