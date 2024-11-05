@@ -30,6 +30,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts", "bots"],
+  "include": ["src", "scripts"],
   "exclude": ["node_modules", "**/dist/*"]
 }
