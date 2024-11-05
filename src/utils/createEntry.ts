@@ -1,5 +1,5 @@
 import { Resource, BundleEntry } from '@medplum/fhirtypes';
-import { randomUUID } from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Creates a BundleEntry with a temporary UUID as the fullUrl.
@@ -15,7 +15,7 @@ export function createEntry(
   return {
     resource,
     // Creating internal references is done by assigning temporary IDs to each bundle entry
-    fullUrl: `urn:uuid:${randomUUID()}`,
+    fullUrl: `urn:uuid:${uuidv4()}`,
     request: {
       url: resource.resourceType,
       method: 'POST',
