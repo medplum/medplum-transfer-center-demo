@@ -226,6 +226,10 @@ describe('Patient Intake Bot', async () => {
               },
             ],
           },
+          {
+            linkId: 'chiefComplaintComments',
+            answer: [{ valueString: 'Shortness of breath' }],
+          },
         ],
       },
     ]);
@@ -279,6 +283,7 @@ describe('Patient Intake Bot', async () => {
         },
       ],
     });
+    expect(chiefComplaintObservation[0].note?.[0].text).toEqual('Shortness of breath');
 
     // Vital Signs
     const bloodPressureObservation = await medplum.searchResources('Observation', {

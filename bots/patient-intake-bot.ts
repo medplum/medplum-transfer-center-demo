@@ -335,13 +335,15 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     }
 
     const chiefComplaint = answers['chiefComplaint']?.valueCoding;
-    if (chiefComplaint) {
+    const chiefComplaintComments = answers['chiefComplaintComments']?.valueString;
+    if (chiefComplaint || chiefComplaintComments) {
       const chiefComplaintObservation = createObservation({
         patient: patientReference,
         response: input,
         effectiveDateTime,
         code: OBSERVATIONS_CODE_MAP.chiefComplaint,
-        valueCodeableConcept: { coding: [chiefComplaint] },
+        valueCodeableConcept: chiefComplaint ? { coding: [chiefComplaint] } : undefined,
+        note: chiefComplaintComments,
       });
       if (chiefComplaintObservation) entries.push(createEntry(chiefComplaintObservation));
     }
