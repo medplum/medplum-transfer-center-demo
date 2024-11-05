@@ -6,30 +6,31 @@ import {
   UCUM,
   createReference,
   getAllQuestionnaireAnswers,
-  getDisplayString,
   getQuestionnaireAnswers,
   resolveId,
 } from '@medplum/core';
 import {
-  AllergyIntolerance,
   Bundle,
   BundleEntry,
   CodeableConcept,
-  Coding,
   CommunicationRequest,
   Observation,
-  ObservationComponent,
   Organization,
   Patient,
   Practitioner,
   QuestionnaireResponse,
   Reference,
-  Resource,
   ServiceRequest,
   Task,
 } from '@medplum/fhirtypes';
+import {
+  createAllergy,
+  createBloodPressureObservationComponent,
+  createEntry,
+  createEntryReference,
+  createObservation,
+} from '@/utils';
 import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
-import { randomUUID } from 'crypto';
 
 // TODO: Move these constants to a utility file
 const VITAL_SIGNS_CATEGORY: CodeableConcept = {
@@ -455,163 +456,4 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   });
 
   return responseBundle;
-}
-
-// TODO: Move these functions to a utility file
-function createEntry(resource: Resource): BundleEntry {
-  return {
-    resource,
-    // Creating internal references is done by assigning temporary IDs to each bundle entry
-    fullUrl: `urn:uuid:${randomUUID()}`,
-    request: {
-      url: resource.resourceType,
-      method: 'POST',
-    },
-  };
-}
-
-function createEntryReference(entry: BundleEntry): Reference<Resource> | undefined {
-  return {
-    display: entry.resource ? getDisplayString(entry.resource) : undefined,
-    reference: entry.fullUrl,
-  };
-}
-
-function createObservation({
-  patient,
-  response,
-  effectiveDateTime,
-  category,
-  code,
-  valueQuantity,
-  valueCodeableConcept,
-  component,
-  hasMember,
-  note,
-}: {
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-  category?: CodeableConcept;
-  code: CodeableConcept;
-  valueQuantity?: Observation['valueQuantity'];
-  valueCodeableConcept?: Observation['valueCodeableConcept'];
-  component?: ObservationComponent[];
-  note?: string;
-  hasMember?: Observation['hasMember'];
-}): Observation | undefined {
-  if (!valueQuantity && !valueCodeableConcept && !component && !note) return undefined;
-
-  const observation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    code,
-    category: category ? [category] : undefined,
-    component,
-    note: note ? [{ text: note, time: effectiveDateTime }] : undefined,
-    hasMember,
-  };
-
-  if (valueQuantity) {
-    observation.valueQuantity = valueQuantity;
-  } else if (valueCodeableConcept) {
-    observation.valueCodeableConcept = valueCodeableConcept;
-  }
-
-  return observation;
-}
-
-function createBloodPressureObservationComponent({
-  diastolic,
-  systolic,
-}: {
-  diastolic?: number;
-  systolic?: number;
-}): ObservationComponent[] {
-  const components: ObservationComponent[] = [];
-
-  if (diastolic) {
-    components.push({
-      code: {
-        coding: [
-          {
-            system: LOINC,
-            code: '8462-4',
-            display: 'Diastolic blood pressure',
-          },
-        ],
-        text: 'Diastolic blood pressure',
-      },
-      valueQuantity: {
-        value: diastolic,
-        unit: 'mmHg',
-        system: UCUM,
-        code: 'mm[Hg]',
-      },
-    });
-  }
-
-  if (systolic) {
-    components.push({
-      code: {
-        coding: [
-          {
-            system: LOINC,
-            code: '8480-6',
-            display: 'Systolic blood pressure',
-          },
-        ],
-        text: 'Systolic blood pressure',
-      },
-      valueQuantity: {
-        value: systolic,
-        unit: 'mmHg',
-        system: UCUM,
-        code: 'mm[Hg]',
-      },
-    });
-  }
-
-  return components;
-}
-
-function createAllergy({
-  allergy,
-  patient,
-}: {
-  allergy: Coding | undefined;
-  patient: Reference<Patient>;
-}): AllergyIntolerance | undefined {
-  if (!allergy) return undefined;
-
-  const allergyResource: AllergyIntolerance = {
-    resourceType: 'AllergyIntolerance',
-    clinicalStatus: {
-      text: 'Active',
-      coding: [
-        {
-          system: 'http://hl7.org/fhir/ValueSet/allergyintolerance-clinical',
-          code: 'active',
-          display: 'Active',
-        },
-      ],
-    },
-    verificationStatus: {
-      text: 'Unconfirmed',
-      coding: [
-        {
-          system: 'http://hl7.org/fhir/ValueSet/allergyintolerance-verification',
-          code: 'unconfirmed',
-          display: 'Unconfirmed',
-        },
-      ],
-    },
-    patient: patient,
-    code: { coding: [allergy] },
-  };
-
-  return allergyResource;
 }
