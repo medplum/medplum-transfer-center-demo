@@ -13,7 +13,7 @@ import {
 import { IconCircleCheck, IconCircleOff } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { cleanResource, shouldShowPatientSummary } from '../utils';
+import { cleanResource, shouldShowPatientSummary } from '@/utils';
 
 /**
  * This is an example of a generic "Resource Display" page.

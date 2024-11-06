@@ -1,10 +1,10 @@
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
 import { ViewQuestionnaireButton } from '@/components/ViewQuestionnaireButton/ViewQuestionnaireButton';
-import { HAYS_MED_ORG_ID } from '@/lib/common';
 import { Button, Container, Title } from '@mantine/core';
 import { PropertyType } from '@medplum/core';
 import { useMemo } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
+import { HAYS_MED_ORG_ID } from '@/constants';
 
 const query = `{
   ResourceList: PractitionerList(_filter: "_has:PractitionerRole:practitioner:organization re 'Organization/${HAYS_MED_ORG_ID}'") {

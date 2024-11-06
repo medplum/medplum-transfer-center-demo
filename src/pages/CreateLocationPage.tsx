@@ -4,9 +4,7 @@ import { Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem, Refere
 import { QuestionnaireForm, useMedplum, useMedplumNavigate } from '@medplum/react';
 import { useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-
-const CREATE_LOCATION_LVL_QUESTIONNAIRE_ID = 'cd78cab0-d3b4-4b33-9df2-60289ac3ca8b';
-const CREATE_LOCATION_ROOM_QUESTIONNAIRE_ID = 'e82a8b16-27fa-4f34-a8cd-daacaac6fc81';
+import { CREATE_LOCATION_ROOM_QUESTIONNAIRE_ID, CREATE_LOCATION_LVL_QUESTIONNAIRE_ID } from '@/constants';
 
 export function CreateLocationPage(): JSX.Element {
   const navigate = useMedplumNavigate();

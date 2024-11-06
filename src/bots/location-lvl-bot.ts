@@ -1,9 +1,6 @@
 import { MedplumClient, BotEvent, getQuestionnaireAnswers, createReference } from '@medplum/core';
 import { Location, QuestionnaireResponse } from '@medplum/fhirtypes';
-
-export const HAYS_MED_ORG_ID = '6cd37206-891f-4783-8b31-e6fed9f70ebd';
-export const HAYS_MED_LOCATION_ID = 'ba836894-122f-42d0-874b-83ea9557e4f3';
-export const CREATE_LOCATION_LVL_QUESTIONNAIRE_ID = 'cd78cab0-d3b4-4b33-9df2-60289ac3ca8b';
+import { CREATE_LOCATION_LVL_QUESTIONNAIRE_ID, HAYS_MED_LOCATION_ID, HAYS_MED_ORG_ID } from '@/constants';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
   const { input } = event;

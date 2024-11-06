@@ -5,7 +5,7 @@ import { modals } from '@mantine/modals';
 import { PropertyType } from '@medplum/core';
 import { useMedplum } from '@medplum/react';
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
-import { HAYS_MED_LOCATION_ID } from '@/lib/common';
+import { HAYS_MED_LOCATION_ID } from '@/constants';
 
 export function LocationsPage(): JSX.Element {
   const navigate = useNavigate();

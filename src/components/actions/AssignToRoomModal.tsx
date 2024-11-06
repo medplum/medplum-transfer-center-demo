@@ -3,6 +3,7 @@ import { QuestionnaireResponse } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum } from '@medplum/react';
 import { useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { PATIENT_BED_ASSIGNMENT_QUESTIONNAIRE_ID } from '@/constants';
 
 interface AssignToRoomModalProps {
   readonly opened: boolean;
@@ -29,7 +30,7 @@ export function AssignToRoomModal(props: AssignToRoomModalProps): JSX.Element {
   return (
     <Modal size="lg" opened={opened} onClose={onClose}>
       <QuestionnaireForm
-        questionnaire={{ reference: 'Questionnaire/989e50a6-55a4-4e96-90f4-f9a231b29769' }}
+        questionnaire={{ reference: `Questionnaire/${PATIENT_BED_ASSIGNMENT_QUESTIONNAIRE_ID}` }}
         subject={{ reference: `ServiceRequest/${id}` }}
         onSubmit={handleSubmit}
       />

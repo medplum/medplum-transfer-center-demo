@@ -1,6 +1,6 @@
-import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 import { MedplumClient, BotEvent, getQuestionnaireAnswers, resolveId } from '@medplum/core';
 import { QuestionnaireResponse } from '@medplum/fhirtypes';
+import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/constants';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
   const { input } = event;

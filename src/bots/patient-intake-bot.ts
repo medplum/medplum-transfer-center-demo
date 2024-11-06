@@ -1,79 +1,38 @@
 import {
   BotEvent,
-  LOINC,
   MedplumClient,
-  SNOMED,
   UCUM,
   createReference,
   getAllQuestionnaireAnswers,
-  getDisplayString,
   getQuestionnaireAnswers,
   resolveId,
 } from '@medplum/core';
 import {
-  AllergyIntolerance,
   Bundle,
   BundleEntry,
-  CodeableConcept,
-  Coding,
   CommunicationRequest,
   Observation,
-  ObservationComponent,
   Organization,
   Patient,
   Practitioner,
   QuestionnaireResponse,
   Reference,
-  Resource,
   ServiceRequest,
   Task,
 } from '@medplum/fhirtypes';
-import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
-import { randomUUID } from 'crypto';
-
-// TODO: Move these constants to a utility file
-const VITAL_SIGNS_CATEGORY: CodeableConcept = {
-  coding: [
-    {
-      system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-      code: 'vital-signs',
-      display: 'Vital Signs',
-    },
-  ],
-  text: 'Vital Signs',
-};
-
-const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
-  bloodPressure: { coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }] },
-  bodyHeight: { coding: [{ system: LOINC, code: '8302-2', display: 'Body height' }] },
-  bodyTemperature: { coding: [{ system: LOINC, code: '8310-5', display: 'Body temperature' }] },
-  bodyWeight: { coding: [{ system: LOINC, code: '29463-7', display: 'Body weight' }] },
-  chiefComplaint: {
-    coding: [
-      { system: LOINC, code: '46239-0', display: 'Chief complaint' },
-      { system: SNOMED, code: '1269489004', display: 'Chief complaint' },
-    ],
-  },
-  heartRate: { coding: [{ system: LOINC, code: '8867-4', display: 'Heart rate' }] },
-  oxygenSaturation: {
-    coding: [
-      {
-        system: LOINC,
-        code: '2708-6',
-        display: 'Oxygen saturation in Arterial blood',
-      },
-      {
-        system: LOINC,
-        code: '59408-5',
-        display: 'Oxygen saturation in Arterial blood by Pulse oximetry',
-      },
-    ],
-    text: 'Oxygen saturation',
-  },
-  respiratoryRate: { coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }] },
-  timeSensitiveDiagnosis: { coding: [{ system: LOINC, code: '78026-2', display: 'Time sensitive diagnosis' }] }, // Diagnosis present on admission
-  vitalSignsPanel: { coding: [{ system: LOINC, code: '85353-1', display: 'Vital signs panel' }] },
-};
+import {
+  createAllergy,
+  createBloodPressureObservationComponent,
+  createBundleEntry,
+  createBundleEntryReference,
+  createObservation,
+} from '@/utils';
+import {
+  HAYS_MED_REQUISITION_SYSTEM,
+  OBSERVATIONS_CODE_MAP,
+  PATIENT_INTAKE_QUESTIONNAIRE_NAME,
+  VITAL_SIGNS_CATEGORY,
+} from '@/constants';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<Bundle> {
   const { input } = event;
@@ -148,9 +107,9 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       ];
     }
 
-    const patientEntry = createEntry(patient);
+    const patientEntry = createBundleEntry(patient);
     entries.push(patientEntry);
-    const patientReference = createEntryReference(patientEntry) as Reference<Patient>;
+    const patientReference = createBundleEntryReference(patientEntry) as Reference<Patient>;
 
     // Vital Signs
     const heartRate = answers['heartRate']?.valueInteger;
@@ -170,7 +129,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '/min',
       },
     });
-    const heartRateObservationEntry = heartRateObservation ? createEntry(heartRateObservation) : undefined;
+    const heartRateObservationEntry = heartRateObservation ? createBundleEntry(heartRateObservation) : undefined;
     if (heartRateObservationEntry) entries.push(heartRateObservationEntry);
 
     const bloodPressureDiastolic = answers['bloodPressureDiastolic']?.valueInteger;
@@ -192,7 +151,9 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         systolic: bloodPressureSystolic,
       }),
     });
-    const bloodPressureObservationEntry = bloodPressureObservation ? createEntry(bloodPressureObservation) : undefined;
+    const bloodPressureObservationEntry = bloodPressureObservation
+      ? createBundleEntry(bloodPressureObservation)
+      : undefined;
     if (bloodPressureObservationEntry) entries.push(bloodPressureObservationEntry);
 
     const temperature = answers['temperature']?.valueDecimal;
@@ -209,7 +170,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[degF]',
       },
     });
-    const temperatureObservationEntry = temperatureObservation ? createEntry(temperatureObservation) : undefined;
+    const temperatureObservationEntry = temperatureObservation ? createBundleEntry(temperatureObservation) : undefined;
     if (temperatureObservationEntry) entries.push(temperatureObservationEntry);
 
     const respiratoryRate = answers['respiratoryRate']?.valueDecimal;
@@ -230,7 +191,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       },
     });
     const respiratoryRateObservationEntry = respiratoryRateObservation
-      ? createEntry(respiratoryRateObservation)
+      ? createBundleEntry(respiratoryRateObservation)
       : undefined;
     if (respiratoryRateObservationEntry) entries.push(respiratoryRateObservationEntry);
 
@@ -249,7 +210,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       },
     });
     const oxygenSaturationObservationEntry = oxygenSaturationObservation
-      ? createEntry(oxygenSaturationObservation)
+      ? createBundleEntry(oxygenSaturationObservation)
       : undefined;
     if (oxygenSaturationObservationEntry) entries.push(oxygenSaturationObservationEntry);
 
@@ -267,7 +228,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[in_i]',
       },
     });
-    const heightObservationEntry = heightObservation ? createEntry(heightObservation) : undefined;
+    const heightObservationEntry = heightObservation ? createBundleEntry(heightObservation) : undefined;
     if (heightObservationEntry) entries.push(heightObservationEntry);
 
     const weight = answers['weight']?.valueDecimal;
@@ -284,7 +245,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: '[lb_av]',
       },
     });
-    const weightObservationEntry = weightObservation ? createEntry(weightObservation) : undefined;
+    const weightObservationEntry = weightObservation ? createBundleEntry(weightObservation) : undefined;
     if (weightObservationEntry) entries.push(weightObservationEntry);
 
     // Create a panel observation for all vital signs if comments or other observations are present
@@ -299,7 +260,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       weightObservationEntry,
     ]
       .filter((observationEntry) => observationEntry !== undefined)
-      .map((observationEntry) => createEntryReference(observationEntry));
+      .map((observationEntry) => createBundleEntryReference(observationEntry));
 
     if (vitalSignsComments || vitalSignsHasMember) {
       const vitalSignsPanelObservation = createObservation({
@@ -307,18 +268,17 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         response: input,
         effectiveDateTime,
         code: OBSERVATIONS_CODE_MAP.vitalSignsPanel,
-        valueCodeableConcept: { text: vitalSignsComments },
         hasMember: vitalSignsHasMember as Reference<Observation>[],
         note: vitalSignsComments,
       });
-      if (vitalSignsPanelObservation) entries.push(createEntry(vitalSignsPanelObservation));
+      if (vitalSignsPanelObservation) entries.push(createBundleEntry(vitalSignsPanelObservation));
     }
 
     // Allergies
     const allergyAnswers = getAllQuestionnaireAnswers(input)['allergySubstance'] || [];
     for (const allergyAnswer of allergyAnswers) {
       const allergy = createAllergy({ allergy: allergyAnswer.valueCoding, patient: patientReference });
-      if (allergy) entries.push(createEntry(allergy));
+      if (allergy) entries.push(createBundleEntry(allergy));
     }
 
     // Diagnosis
@@ -331,7 +291,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         code: OBSERVATIONS_CODE_MAP.timeSensitiveDiagnosis,
         valueCodeableConcept: { coding: [timeSensitiveDiagnosis] },
       });
-      if (diagnosisObservation) entries.push(createEntry(diagnosisObservation));
+      if (diagnosisObservation) entries.push(createBundleEntry(diagnosisObservation));
     }
 
     const chiefComplaint = answers['chiefComplaint']?.valueCoding;
@@ -345,7 +305,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         valueCodeableConcept: chiefComplaint ? { coding: [chiefComplaint] } : undefined,
         note: chiefComplaintComments,
       });
-      if (chiefComplaintObservation) entries.push(createEntry(chiefComplaintObservation));
+      if (chiefComplaintObservation) entries.push(createBundleEntry(chiefComplaintObservation));
     }
 
     // Transfer Info
@@ -373,11 +333,13 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     }
     transferringPhysician.telecom = [{ system: 'phone', value: transferPhysPhone }];
 
-    const transferringPhysicianEntry = createEntry(transferringPhysician);
-    const transferringPhysicianReference = createEntryReference(transferringPhysicianEntry) as Reference<Practitioner>;
+    const transferringPhysicianEntry = createBundleEntry(transferringPhysician);
+    const transferringPhysicianReference = createBundleEntryReference(
+      transferringPhysicianEntry
+    ) as Reference<Practitioner>;
     entries.push(transferringPhysicianEntry);
     entries.push(
-      createEntry({
+      createBundleEntry({
         resourceType: 'PractitionerRole',
         practitioner: transferringPhysicianReference,
         organization: transferFacility as Reference<Organization>,
@@ -401,8 +363,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       requisition: { system: HAYS_MED_REQUISITION_SYSTEM, value: requisitionId },
       authoredOn: new Date().toISOString(),
     };
-    const serviceRequestEntry = createEntry(serviceRequest);
-    const serviceRequestReference = createEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
+    const serviceRequestEntry = createBundleEntry(serviceRequest);
+    const serviceRequestReference = createBundleEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
     entries.push(serviceRequestEntry);
 
     // Create communication request for call between transferring and accepting physicians
@@ -414,8 +376,8 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       ],
       basedOn: [serviceRequestReference],
     };
-    const communicationRequestEntry = createEntry(communicationRequest);
-    const communicationRequestReference = createEntryReference(
+    const communicationRequestEntry = createBundleEntry(communicationRequest);
+    const communicationRequestReference = createBundleEntryReference(
       communicationRequestEntry
     ) as Reference<CommunicationRequest>;
     entries.push(communicationRequestEntry);
@@ -440,7 +402,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       basedOn: [serviceRequestReference],
       focus: communicationRequestReference,
     };
-    entries.push(createEntry(callTask));
+    entries.push(createBundleEntry(callTask));
 
     return entries;
   }
@@ -455,163 +417,4 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
   });
 
   return responseBundle;
-}
-
-// TODO: Move these functions to a utility file
-function createEntry(resource: Resource): BundleEntry {
-  return {
-    resource,
-    // Creating internal references is done by assigning temporary IDs to each bundle entry
-    fullUrl: `urn:uuid:${randomUUID()}`,
-    request: {
-      url: resource.resourceType,
-      method: 'POST',
-    },
-  };
-}
-
-function createEntryReference(entry: BundleEntry): Reference<Resource> | undefined {
-  return {
-    display: entry.resource ? getDisplayString(entry.resource) : undefined,
-    reference: entry.fullUrl,
-  };
-}
-
-function createObservation({
-  patient,
-  response,
-  effectiveDateTime,
-  category,
-  code,
-  valueQuantity,
-  valueCodeableConcept,
-  component,
-  hasMember,
-  note,
-}: {
-  patient: Reference<Patient>;
-  response: QuestionnaireResponse;
-  effectiveDateTime: string;
-  category?: CodeableConcept;
-  code: CodeableConcept;
-  valueQuantity?: Observation['valueQuantity'];
-  valueCodeableConcept?: Observation['valueCodeableConcept'];
-  component?: ObservationComponent[];
-  note?: string;
-  hasMember?: Observation['hasMember'];
-}): Observation | undefined {
-  if (!valueQuantity && !valueCodeableConcept && !component && !note) return undefined;
-
-  const observation: Observation = {
-    resourceType: 'Observation',
-    status: 'final',
-    subject: patient,
-    effectiveDateTime,
-    derivedFrom: [createReference(response)],
-    code,
-    category: category ? [category] : undefined,
-    component,
-    note: note ? [{ text: note, time: effectiveDateTime }] : undefined,
-    hasMember,
-  };
-
-  if (valueQuantity) {
-    observation.valueQuantity = valueQuantity;
-  } else if (valueCodeableConcept) {
-    observation.valueCodeableConcept = valueCodeableConcept;
-  }
-
-  return observation;
-}
-
-function createBloodPressureObservationComponent({
-  diastolic,
-  systolic,
-}: {
-  diastolic?: number;
-  systolic?: number;
-}): ObservationComponent[] {
-  const components: ObservationComponent[] = [];
-
-  if (diastolic) {
-    components.push({
-      code: {
-        coding: [
-          {
-            system: LOINC,
-            code: '8462-4',
-            display: 'Diastolic blood pressure',
-          },
-        ],
-        text: 'Diastolic blood pressure',
-      },
-      valueQuantity: {
-        value: diastolic,
-        unit: 'mmHg',
-        system: UCUM,
-        code: 'mm[Hg]',
-      },
-    });
-  }
-
-  if (systolic) {
-    components.push({
-      code: {
-        coding: [
-          {
-            system: LOINC,
-            code: '8480-6',
-            display: 'Systolic blood pressure',
-          },
-        ],
-        text: 'Systolic blood pressure',
-      },
-      valueQuantity: {
-        value: systolic,
-        unit: 'mmHg',
-        system: UCUM,
-        code: 'mm[Hg]',
-      },
-    });
-  }
-
-  return components;
-}
-
-function createAllergy({
-  allergy,
-  patient,
-}: {
-  allergy: Coding | undefined;
-  patient: Reference<Patient>;
-}): AllergyIntolerance | undefined {
-  if (!allergy) return undefined;
-
-  const allergyResource: AllergyIntolerance = {
-    resourceType: 'AllergyIntolerance',
-    clinicalStatus: {
-      text: 'Active',
-      coding: [
-        {
-          system: 'http://hl7.org/fhir/ValueSet/allergyintolerance-clinical',
-          code: 'active',
-          display: 'Active',
-        },
-      ],
-    },
-    verificationStatus: {
-      text: 'Unconfirmed',
-      coding: [
-        {
-          system: 'http://hl7.org/fhir/ValueSet/allergyintolerance-verification',
-          code: 'unconfirmed',
-          display: 'Unconfirmed',
-        },
-      ],
-    },
-    patient: patient,
-    code: { coding: [allergy] },
-  };
-
-  return allergyResource;
 }

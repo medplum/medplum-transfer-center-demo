@@ -1,10 +1,10 @@
-import { act, renderHook } from '@testing-library/react';
+import { Questionnaire, ServiceRequest } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
-import { ServiceRequest, Questionnaire } from '@medplum/fhirtypes';
 import { MedplumProvider } from '@medplum/react';
+import { act, renderHook } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/constants';
 import { useSupplementaryQuestionnaire } from '@/hooks/useSupplementaryQuestionnaire';
-import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
 
 // Mocks
 let mockServiceRequestWithPerformer: ServiceRequest = {

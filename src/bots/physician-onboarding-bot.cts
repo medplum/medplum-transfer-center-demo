@@ -1,5 +1,6 @@
 import { BotEvent, MedplumClient, createReference, getQuestionnaireAnswers } from '@medplum/core';
 import { Coding, Practitioner, QuestionnaireResponse, QuestionnaireResponseItemAnswer } from '@medplum/fhirtypes';
+import { HAYS_MED_ORG_ID } from '@/constants';
 
 type PractitionerLinkId = 'prefix' | 'firstName' | 'lastName' | 'suffix' | 'phoneNo' | 'specialty';
 type ValidLinkId = PractitionerLinkId;
@@ -8,8 +9,6 @@ type ParsedResults = {
   practitioner: Practitioner;
   specialty: Coding;
 };
-
-const HAYS_MED_ORG_ID = '6cd37206-891f-4783-8b31-e6fed9f70ebd';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<void> {
   const results = {
