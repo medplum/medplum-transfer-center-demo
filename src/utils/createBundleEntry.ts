@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
  * @param requestOptions Optional request options.
  * @returns A BundleEntry resource.
  */
-export function createEntry(
+export function createBundleEntry(
   resource: Resource,
   { requestOptions }: { requestOptions?: BundleEntry['request'] } = {}
 ): BundleEntry {
