@@ -3,6 +3,7 @@ import { QuestionnaireResponse } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum } from '@medplum/react';
 import { useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { QUESTIONNAIRE_ASSIGNMENT_QUESTIONNAIRE_ID } from '@/constants';
 
 interface AssignQuestionnaireModalProps {
   readonly opened: boolean;
@@ -28,7 +29,7 @@ export function AssignQuestionnaireModal(props: AssignQuestionnaireModalProps): 
   return (
     <Modal size="lg" opened={props.opened} onClose={props.onClose}>
       <QuestionnaireForm
-        questionnaire={{ reference: 'Questionnaire/92bad4dc-24ca-41f7-9fdb-80b5bfb57100' }}
+        questionnaire={{ reference: `Questionnaire/${QUESTIONNAIRE_ASSIGNMENT_QUESTIONNAIRE_ID}` }}
         subject={{ reference: `Practitioner/${id}` }}
         onSubmit={handleSubmit}
       />

@@ -1,8 +1,6 @@
 import {
   BotEvent,
-  LOINC,
   MedplumClient,
-  SNOMED,
   UCUM,
   createReference,
   getAllQuestionnaireAnswers,
@@ -12,7 +10,6 @@ import {
 import {
   Bundle,
   BundleEntry,
-  CodeableConcept,
   CommunicationRequest,
   Observation,
   Organization,
@@ -30,51 +27,12 @@ import {
   createEntryReference,
   createObservation,
 } from '@/utils';
-import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
-
-// TODO: Move these constants to a utility file
-const VITAL_SIGNS_CATEGORY: CodeableConcept = {
-  coding: [
-    {
-      system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-      code: 'vital-signs',
-      display: 'Vital Signs',
-    },
-  ],
-  text: 'Vital Signs',
-};
-
-const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
-  bloodPressure: { coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }] },
-  bodyHeight: { coding: [{ system: LOINC, code: '8302-2', display: 'Body height' }] },
-  bodyTemperature: { coding: [{ system: LOINC, code: '8310-5', display: 'Body temperature' }] },
-  bodyWeight: { coding: [{ system: LOINC, code: '29463-7', display: 'Body weight' }] },
-  chiefComplaint: {
-    coding: [
-      { system: LOINC, code: '46239-0', display: 'Chief complaint' },
-      { system: SNOMED, code: '1269489004', display: 'Chief complaint' },
-    ],
-  },
-  heartRate: { coding: [{ system: LOINC, code: '8867-4', display: 'Heart rate' }] },
-  oxygenSaturation: {
-    coding: [
-      {
-        system: LOINC,
-        code: '2708-6',
-        display: 'Oxygen saturation in Arterial blood',
-      },
-      {
-        system: LOINC,
-        code: '59408-5',
-        display: 'Oxygen saturation in Arterial blood by Pulse oximetry',
-      },
-    ],
-    text: 'Oxygen saturation',
-  },
-  respiratoryRate: { coding: [{ system: LOINC, code: '9279-1', display: 'Respiratory rate' }] },
-  timeSensitiveDiagnosis: { coding: [{ system: LOINC, code: '78026-2', display: 'Time sensitive diagnosis' }] }, // Diagnosis present on admission
-  vitalSignsPanel: { coding: [{ system: LOINC, code: '85353-1', display: 'Vital signs panel' }] },
-};
+import {
+  HAYS_MED_REQUISITION_SYSTEM,
+  OBSERVATIONS_CODE_MAP,
+  PATIENT_INTAKE_QUESTIONNAIRE_NAME,
+  VITAL_SIGNS_CATEGORY,
+} from '@/constants';
 
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<Bundle> {
   const { input } = event;

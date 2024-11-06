@@ -3,9 +3,9 @@ import { showNotification } from '@mantine/notifications';
 import { generateId, normalizeErrorString, sleep } from '@medplum/core';
 import { QuestionnaireResponse, QuestionnaireResponseItem, ServiceRequest } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum, useMedplumNavigate } from '@medplum/react';
-import { useCallback } from 'react';
-import { HAYS_MED_REQUISITION_SYSTEM } from '@/lib/common';
 import { IconCircleOff } from '@tabler/icons-react';
+import { useCallback } from 'react';
+import { HAYS_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_ID } from '@/constants';
 
 const MAX_SEARCH_RETRIES = 3;
 
@@ -76,7 +76,7 @@ export function NewPatientPage(): JSX.Element {
   return (
     <Container fluid>
       <QuestionnaireForm
-        questionnaire={{ reference: 'Questionnaire/4469a0a6-10e3-4712-b735-a32b121d45e1' }}
+        questionnaire={{ reference: `Questionnaire/${PATIENT_INTAKE_QUESTIONNAIRE_ID}` }}
         onSubmit={handleSubmit}
       />
     </Container>

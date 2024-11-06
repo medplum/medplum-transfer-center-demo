@@ -1,8 +1,8 @@
 import { Container } from '@mantine/core';
-
 import { QuestionnaireResponse } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum, useMedplumNavigate } from '@medplum/react';
 import { useCallback } from 'react';
+import { PHYSICIAN_ONBOARDING_QUESTIONNAIRE_ID } from '@/constants';
 
 export function NewPhysicianPage(): JSX.Element {
   const medplum = useMedplum();
@@ -23,7 +23,7 @@ export function NewPhysicianPage(): JSX.Element {
   return (
     <Container fluid>
       <QuestionnaireForm
-        questionnaire={{ reference: 'Questionnaire/d617f4a4-2d38-478f-99dc-d27167f7d03d' }}
+        questionnaire={{ reference: `Questionnaire/${PHYSICIAN_ONBOARDING_QUESTIONNAIRE_ID}` }}
         onSubmit={handleSubmit}
       />
     </Container>

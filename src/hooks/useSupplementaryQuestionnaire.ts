@@ -2,7 +2,7 @@ import { resolveId } from '@medplum/core';
 import { Practitioner, Questionnaire, Reference, ServiceRequest } from '@medplum/fhirtypes';
 import { useMedplum } from '@medplum/react';
 import { useCallback } from 'react';
-import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
+import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/constants';
 
 /**
  * Custom hook for handling supplementary questionnaires.

@@ -1,7 +1,7 @@
 import { createReference, getReferenceString, resolveId } from '@medplum/core';
 import { Questionnaire, QuestionnaireResponse, ServiceRequest, Task } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
-import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
+import { ACCEPTING_PHYSICIAN_INTAKE_QUESTIONNAIRE_NAME } from '@/constants';
 import { handler } from './accepting-physician-intake-bot';
 
 describe('Accepting Physician Intake Bot', async () => {

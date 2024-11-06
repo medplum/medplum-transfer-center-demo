@@ -1,12 +1,8 @@
 import { createReference } from '@medplum/core';
 import { QuestionnaireResponse } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
-import {
-  CREATE_LOCATION_LVL_QUESTIONNAIRE_ID,
-  handler,
-  HAYS_MED_LOCATION_ID,
-  HAYS_MED_ORG_ID,
-} from './location-lvl-bot';
+import { CREATE_LOCATION_LVL_QUESTIONNAIRE_ID, HAYS_MED_LOCATION_ID, HAYS_MED_ORG_ID } from '@/constants';
+import { handler } from './location-lvl-bot';
 
 describe('Location Lvl Bot', async () => {
   let medplum: MockClient;

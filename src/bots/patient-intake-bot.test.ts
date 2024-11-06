@@ -1,7 +1,7 @@
 import { createReference, generateId, getReferenceString, ICD10, LOINC, SNOMED, UCUM } from '@medplum/core';
 import { Patient, Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
-import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/lib/common';
+import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/constants';
 import { handler } from './patient-intake-bot';
 
 describe('Patient Intake Bot', async () => {
