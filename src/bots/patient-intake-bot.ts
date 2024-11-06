@@ -87,16 +87,29 @@ function parseAnswers(input: QuestionnaireResponse): BundleEntry[] {
   }
   const effectiveDateTime = new Date(dateTime).toISOString();
 
-  const patientReference = createPatient(entries, answers);
+  const { patientReference } = createPatient(entries, answers);
   createVitalSigns(entries, answers, questionnaireReference, patientReference, effectiveDateTime);
   createAllergies(entries, input, patientReference);
   createDiagnosis(entries, answers, questionnaireReference, patientReference, effectiveDateTime);
-  createTransferInfo(entries, answers, questionnaireReference, patientReference);
+  const { transferPhysician, transferPhysicianReference } = createTransferringPhysician(entries, answers);
+  createTransferRequests(
+    entries,
+    answers,
+    questionnaireReference,
+    patientReference,
+    transferPhysician,
+    transferPhysicianReference
+  );
 
   return entries;
 }
 
-function createPatient(entries: BundleEntry[], answers: Record<string, QuestionnaireResponseItemAnswer>) {
+function createPatient(
+  entries: BundleEntry[],
+  answers: Record<string, QuestionnaireResponseItemAnswer>
+): {
+  patientReference: Reference<Patient>;
+} {
   const patient: Patient = { resourceType: 'Patient' };
 
   const firstName = answers['firstName']?.valueString;
@@ -136,7 +149,10 @@ function createPatient(entries: BundleEntry[], answers: Record<string, Questionn
 
   const patientEntry = createBundleEntry(patient);
   entries.push(patientEntry);
-  return createBundleEntryReference(patientEntry) as Reference<Patient>;
+
+  const patientReference = createBundleEntryReference(patientEntry) as Reference<Patient>;
+
+  return { patientReference };
 }
 
 function createVitalSigns(
@@ -145,7 +161,7 @@ function createVitalSigns(
   questionnaireReference: Reference<QuestionnaireResponse>,
   patientReference: Reference<Patient>,
   effectiveDateTime: string
-) {
+): void {
   const heartRate = answers['heartRate']?.valueInteger;
   if (heartRate !== undefined && heartRate < 0) {
     throw new Error('Invalid Heart Rate');
@@ -309,7 +325,11 @@ function createVitalSigns(
   }
 }
 
-function createAllergies(entries: BundleEntry[], input: QuestionnaireResponse, patientReference: Reference<Patient>) {
+function createAllergies(
+  entries: BundleEntry[],
+  input: QuestionnaireResponse,
+  patientReference: Reference<Patient>
+): void {
   const allergyAnswers = getAllQuestionnaireAnswers(input)['allergySubstance'] || [];
   allergyAnswers.forEach((allergyAnswer) => {
     const allergy = createAllergy({ allergy: allergyAnswer.valueCoding, patient: patientReference });
@@ -325,7 +345,7 @@ function createDiagnosis(
   questionnaireReference: Reference<QuestionnaireResponse>,
   patientReference: Reference<Patient>,
   effectiveDateTime: string
-) {
+): void {
   const timeSensitiveDiagnosis = answers['timeSensitiveDiagnosis']?.valueCoding;
   if (timeSensitiveDiagnosis) {
     const diagnosisObservation = createObservation({
@@ -357,48 +377,59 @@ function createDiagnosis(
   }
 }
 
-function createTransferInfo(
+function createTransferringPhysician(
   entries: BundleEntry[],
-  answers: Record<string, QuestionnaireResponseItemAnswer>,
-  questionnaireReference: Reference<QuestionnaireResponse>,
-  patientReference: Reference<Patient>
-) {
-  const transferringFacility = answers['transferFacility']?.valueReference;
-  if (!transferringFacility?.reference?.startsWith('Organization')) {
+  answers: Record<string, QuestionnaireResponseItemAnswer>
+): {
+  transferPhysician: Practitioner;
+  transferPhysicianReference: Reference<Practitioner>;
+} {
+  const transferFacility = answers['transferFacility']?.valueReference;
+  if (!transferFacility?.reference?.startsWith('Organization')) {
     throw new Error('Transferring origin is not a valid reference to an Organization');
   }
 
-  const transferringPhysician: Practitioner = { resourceType: 'Practitioner' };
-  const transferringPhysicianFirstName = answers['transferPhysFirst']?.valueString;
-  const transferringPhysicianLastName = answers['transferPhysLast']?.valueString;
-  if (!transferringPhysicianFirstName || !transferringPhysicianLastName) {
+  const transferPhysician: Practitioner = { resourceType: 'Practitioner' };
+  const transferPhysicianFirstName = answers['transferPhysFirst']?.valueString;
+  const transferPhysicianLastName = answers['transferPhysLast']?.valueString;
+  if (!transferPhysicianFirstName || !transferPhysicianLastName) {
     throw new Error('Missing required Transferring Physician Name');
   }
-  transferringPhysician.name = [{ given: [transferringPhysicianFirstName], family: transferringPhysicianLastName }];
+  transferPhysician.name = [{ given: [transferPhysicianFirstName], family: transferPhysicianLastName }];
 
-  const transferringPhysicianQualifications = answers['transferPhysQual']?.valueString;
-  if (transferringPhysicianQualifications) {
-    transferringPhysician.name[0].suffix = transferringPhysicianQualifications.split(' ');
+  const transferPhysicianQualifications = answers['transferPhysQual']?.valueString;
+  if (transferPhysicianQualifications) {
+    transferPhysician.name[0].suffix = transferPhysicianQualifications.split(' ');
   }
 
-  const transferringPhysicianPhone = answers['transferPhysPhone']?.valueString;
-  if (!transferringPhysicianPhone) {
+  const transferPhysicianPhone = answers['transferPhysPhone']?.valueString;
+  if (!transferPhysicianPhone) {
     throw new Error('Missing required Transferring Physician Phone');
   }
-  transferringPhysician.telecom = [{ system: 'phone', value: transferringPhysicianPhone }];
+  transferPhysician.telecom = [{ system: 'phone', value: transferPhysicianPhone }];
 
-  const transferringPhysicianEntry = createBundleEntry(transferringPhysician);
-  const transferringPhysicianReference = createBundleEntryReference(
-    transferringPhysicianEntry
-  ) as Reference<Practitioner>;
-  entries.push(transferringPhysicianEntry);
-  const transferringPhysicianPractitionerRole: PractitionerRole = {
+  const transferPhysicianEntry = createBundleEntry(transferPhysician);
+  const transferPhysicianReference = createBundleEntryReference(transferPhysicianEntry) as Reference<Practitioner>;
+  entries.push(transferPhysicianEntry);
+
+  const transferPhysicianPractitionerRole: PractitionerRole = {
     resourceType: 'PractitionerRole',
-    practitioner: transferringPhysicianReference,
-    organization: transferringFacility as Reference<Organization>,
+    practitioner: transferPhysicianReference,
+    organization: transferFacility as Reference<Organization>,
   };
-  entries.push(createBundleEntry(transferringPhysicianPractitionerRole));
+  entries.push(createBundleEntry(transferPhysicianPractitionerRole));
 
+  return { transferPhysician, transferPhysicianReference };
+}
+
+function createTransferRequests(
+  entries: BundleEntry[],
+  answers: Record<string, QuestionnaireResponseItemAnswer>,
+  questionnaireReference: Reference<QuestionnaireResponse>,
+  patientReference: Reference<Patient>,
+  transferPhysician: Practitioner,
+  transferPhysicianReference: Reference<Practitioner>
+) {
   const serviceRequest: ServiceRequest = {
     resourceType: 'ServiceRequest',
     code: {
@@ -408,7 +439,7 @@ function createTransferInfo(
     status: 'active',
     intent: 'proposal',
     subject: patientReference,
-    requester: transferringPhysicianReference,
+    requester: transferPhysicianReference,
     supportingInfo: [{ ...questionnaireReference, display: 'Patient Intake Form' }],
     requisition: { system: HAYS_MED_REQUISITION_SYSTEM, value: answers['requisitionId']?.valueString },
     authoredOn: new Date().toISOString(),
@@ -420,7 +451,7 @@ function createTransferInfo(
   const communicationRequest: CommunicationRequest = {
     resourceType: 'CommunicationRequest',
     status: 'active',
-    payload: [{ contentString: transferringPhysician.telecom?.find((val) => val.system === 'phone')?.value as string }],
+    payload: [{ contentString: transferPhysician.telecom?.find((val) => val.system === 'phone')?.value as string }],
     basedOn: [serviceRequestReference],
   };
   const communicationRequestEntry = createBundleEntry(communicationRequest);
