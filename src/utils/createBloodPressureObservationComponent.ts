@@ -13,7 +13,11 @@ export function createBloodPressureObservationComponent({
 }: {
   diastolic?: number;
   systolic?: number;
-}): ObservationComponent[] {
+}): ObservationComponent[] | undefined {
+  if (diastolic === undefined && systolic === undefined) {
+    return undefined;
+  }
+
   const components: ObservationComponent[] = [];
 
   if (diastolic) {

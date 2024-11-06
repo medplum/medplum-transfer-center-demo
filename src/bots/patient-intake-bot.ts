@@ -268,7 +268,6 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
         response: input,
         effectiveDateTime,
         code: OBSERVATIONS_CODE_MAP.vitalSignsPanel,
-        valueCodeableConcept: { text: vitalSignsComments },
         hasMember: vitalSignsHasMember as Reference<Observation>[],
         note: vitalSignsComments,
       });

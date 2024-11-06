@@ -13,7 +13,6 @@ export function createBundleEntry(
   { requestOptions }: { requestOptions?: BundleEntry['request'] } = {}
 ): BundleEntry {
   return {
-    resource,
     // Creating internal references is done by assigning temporary IDs to each bundle entry
     fullUrl: `urn:uuid:${uuidv4()}`,
     request: {
@@ -21,5 +20,6 @@ export function createBundleEntry(
       method: 'POST',
       ...requestOptions,
     },
+    resource,
   };
 }
