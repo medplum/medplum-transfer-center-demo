@@ -59,7 +59,7 @@ async function validateInput(medplum: MedplumClient, input: QuestionnaireRespons
   }
 
   if (!input.questionnaire) {
-    throw new Error('Questionnaire is required');
+    throw new Error('Missing required Questionnaire');
   }
 
   const questionnaire = await medplum.readResource(
@@ -184,11 +184,11 @@ function createVitalSigns(
 
   const bloodPressureDiastolic = answers['bloodPressureDiastolic']?.valueInteger;
   if (bloodPressureDiastolic !== undefined && bloodPressureDiastolic < 0) {
-    throw new Error('Invalid Blood Pressure Diastolic');
+    throw new Error(`Invalid Diastolic Blood Pressure. Received: ${bloodPressureDiastolic}`);
   }
   const bloodPressureSystolic = answers['bloodPressureSystolic']?.valueInteger;
   if (bloodPressureSystolic !== undefined && bloodPressureSystolic < 0) {
-    throw new Error('Invalid Blood Pressure Systolic');
+    throw new Error(`Invalid Systolic Blood Pressure. Received: ${bloodPressureSystolic}`);
   }
   const bloodPressureObservation = createObservation({
     patient: patientReference,
@@ -225,7 +225,7 @@ function createVitalSigns(
 
   const respiratoryRate = answers['respiratoryRate']?.valueDecimal;
   if (respiratoryRate !== undefined && respiratoryRate < 0) {
-    throw new Error('Invalid Respiratory Rate');
+    throw new Error(`Invalid Respiratory Rate. Received: ${respiratoryRate}`);
   }
   const respiratoryRateObservation = createObservation({
     patient: patientReference,
