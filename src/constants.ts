@@ -31,7 +31,19 @@ export const VITAL_SIGNS_CATEGORY: CodeableConcept = {
   text: 'Vital Signs',
 };
 
-export const OBSERVATIONS_CODE_MAP: Record<string, CodeableConcept> = {
+export const OBSERVATIONS_CODE_MAP: Record<
+  | 'bloodPressure'
+  | 'bodyHeight'
+  | 'bodyTemperature'
+  | 'bodyWeight'
+  | 'chiefComplaint'
+  | 'heartRate'
+  | 'oxygenSaturation'
+  | 'respiratoryRate'
+  | 'timeSensitiveDiagnosis'
+  | 'vitalSignsPanel',
+  CodeableConcept
+> = {
   bloodPressure: { coding: [{ system: LOINC, code: '85354-9', display: 'Blood Pressure' }] },
   bodyHeight: { coding: [{ system: LOINC, code: '8302-2', display: 'Body height' }] },
   bodyTemperature: { coding: [{ system: LOINC, code: '8310-5', display: 'Body temperature' }] },
