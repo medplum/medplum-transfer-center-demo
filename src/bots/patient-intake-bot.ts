@@ -24,7 +24,7 @@ import {
   createAllergy,
   createBloodPressureObservationComponent,
   createBundleEntry,
-  createEntryReference,
+  createBundleEntryReference,
   createObservation,
 } from '@/utils';
 import {
@@ -109,7 +109,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
 
     const patientEntry = createBundleEntry(patient);
     entries.push(patientEntry);
-    const patientReference = createEntryReference(patientEntry) as Reference<Patient>;
+    const patientReference = createBundleEntryReference(patientEntry) as Reference<Patient>;
 
     // Vital Signs
     const heartRate = answers['heartRate']?.valueInteger;
@@ -260,7 +260,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       weightObservationEntry,
     ]
       .filter((observationEntry) => observationEntry !== undefined)
-      .map((observationEntry) => createEntryReference(observationEntry));
+      .map((observationEntry) => createBundleEntryReference(observationEntry));
 
     if (vitalSignsComments || vitalSignsHasMember) {
       const vitalSignsPanelObservation = createObservation({
@@ -335,7 +335,9 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     transferringPhysician.telecom = [{ system: 'phone', value: transferPhysPhone }];
 
     const transferringPhysicianEntry = createBundleEntry(transferringPhysician);
-    const transferringPhysicianReference = createEntryReference(transferringPhysicianEntry) as Reference<Practitioner>;
+    const transferringPhysicianReference = createBundleEntryReference(
+      transferringPhysicianEntry
+    ) as Reference<Practitioner>;
     entries.push(transferringPhysicianEntry);
     entries.push(
       createBundleEntry({
@@ -363,7 +365,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       authoredOn: new Date().toISOString(),
     };
     const serviceRequestEntry = createBundleEntry(serviceRequest);
-    const serviceRequestReference = createEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
+    const serviceRequestReference = createBundleEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
     entries.push(serviceRequestEntry);
 
     // Create communication request for call between transferring and accepting physicians
@@ -376,7 +378,7 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
       basedOn: [serviceRequestReference],
     };
     const communicationRequestEntry = createBundleEntry(communicationRequest);
-    const communicationRequestReference = createEntryReference(
+    const communicationRequestReference = createBundleEntryReference(
       communicationRequestEntry
     ) as Reference<CommunicationRequest>;
     entries.push(communicationRequestEntry);
