@@ -73,3 +73,31 @@ To build the app, run:
 ```bash
 npm run build
 ```
+
+## Upserting core data
+
+To upsert the core data into the Medplum server, run:
+
+```bash
+npx medplum post '' "$(cat path/to/bundle.json)"
+# Example: npx medplum post '' "$(cat data/core/core-data.json)"
+```
+
+### Core data
+
+The core data for the HaysMed Regional Portal is stored in the `data/core` directory. This data is used to populate the Medplum server with the necessary resources for the portal to function. The core data includes the following resources:
+
+| Resource Type | Name                                     |
+| ------------- | ---------------------------------------- |
+| CodeSystem    | call-dispositions                        |
+| ValueSet      | accepting-specialties                    |
+| ValueSet      | call-dispositions                        |
+| ValueSet      | starting-locations                       |
+| ValueSet      | time-sensitive-diagnosis                 |
+| ValueSet      | transferring-origins                     |
+| Questionnaire | accepting-physician-intake-questionnaire |
+| Questionnaire | create-location-lvl-questionnaire        |
+| Questionnaire | create-location-ro-questionnaire         |
+| Questionnaire | patient-bed-assignment                   |
+| Questionnaire | patient-intake-questionnaire             |
+| Questionnaire | physician-onboarding-questionnaire       |
