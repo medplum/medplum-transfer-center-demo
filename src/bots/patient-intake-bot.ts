@@ -71,6 +71,10 @@ async function validateInput(medplum: MedplumClient, input: QuestionnaireRespons
   }
 }
 
+/**
+ * Parses the answers from the QuestionnaireResponse, creates the appropriate resources, and
+ * returns a list of BundleEntry resources to be created.
+ */
 function parseAnswers(input: QuestionnaireResponse): BundleEntry[] {
   const entries: BundleEntry[] = [];
   const questionnaireReference = createReference(input);
