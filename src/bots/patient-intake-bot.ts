@@ -15,7 +15,9 @@ import {
   Organization,
   Patient,
   Practitioner,
+  PractitionerRole,
   QuestionnaireResponse,
+  QuestionnaireResponseItemAnswer,
   Reference,
   ServiceRequest,
   Task,
@@ -37,6 +39,21 @@ import {
 export async function handler(medplum: MedplumClient, event: BotEvent<QuestionnaireResponse>): Promise<Bundle> {
   const { input } = event;
 
+  await validateInput(medplum, input);
+
+  const entries: BundleEntry[] = parseAnswers(input);
+
+  // Execute batch to create all resources at once
+  const responseBundle = await medplum.executeBatch({
+    resourceType: 'Bundle',
+    type: 'transaction',
+    entry: entries,
+  });
+
+  return responseBundle;
+}
+
+async function validateInput(medplum: MedplumClient, input: QuestionnaireResponse): Promise<void> {
   if (input.resourceType !== 'QuestionnaireResponse') {
     throw new Error('Invalid input');
   }
@@ -45,376 +62,391 @@ export async function handler(medplum: MedplumClient, event: BotEvent<Questionna
     throw new Error('Questionnaire is required');
   }
 
-  await medplum
-    .readResource('Questionnaire', resolveId({ reference: input.questionnaire }) as string)
-    .then((questionnaire) => {
-      if (questionnaire.name !== PATIENT_INTAKE_QUESTIONNAIRE_NAME) {
-        throw new Error('Invalid questionnaire');
-      }
-    });
+  const questionnaire = await medplum.readResource(
+    'Questionnaire',
+    resolveId({ reference: input.questionnaire }) as string
+  );
+  if (questionnaire.name !== PATIENT_INTAKE_QUESTIONNAIRE_NAME) {
+    throw new Error('Invalid questionnaire');
+  }
+}
 
-  function parseAnswers(): BundleEntry[] {
-    const entries: BundleEntry[] = [];
+function parseAnswers(input: QuestionnaireResponse): BundleEntry[] {
+  const entries: BundleEntry[] = [];
+  const questionnaireReference = createReference(input);
+  const answers = getQuestionnaireAnswers(input);
 
-    const answers = getQuestionnaireAnswers(input);
-
-    const requisitionId = answers['requisitionId']?.valueString;
-    if (!requisitionId) {
-      throw new Error('Missing required requisitionId');
-    }
-
-    const dateTime = answers['dateTime']?.valueDateTime;
-    if (!dateTime) {
-      throw new Error('Missing required Date/Time');
-    }
-
-    const effectiveDateTime = new Date(dateTime).toISOString();
-
-    // Patient Info
-    const patient: Patient = { resourceType: 'Patient' };
-    const patientFirstName = answers['firstName']?.valueString;
-    const patientLastName = answers['lastName']?.valueString;
-    if (!patientFirstName || !patientLastName) {
-      throw new Error('Missing required Patient Name');
-    }
-    patient.name = [{ given: [patientFirstName], family: patientLastName }];
-
-    const patientBirthdate = answers['birthdate']?.valueDate;
-    if (!patientBirthdate) {
-      throw new Error('Missing required Patient Birthdate');
-    }
-    patient.birthDate = patientBirthdate;
-
-    const patientPhone = answers['phone']?.valueString;
-    if (patientPhone) {
-      patient.telecom = [{ system: 'phone', value: patientPhone }];
-    }
-
-    const patientStreet = answers['street']?.valueString;
-    const patientCity = answers['city']?.valueString;
-    const patientState = answers['state']?.valueCoding?.code;
-    const patientPostalCode = answers['postalCode']?.valueString;
-    if (patientStreet || patientCity || patientState || patientPostalCode) {
-      patient.address = [
-        {
-          use: 'home',
-          type: 'physical',
-          line: patientStreet ? [patientStreet] : [],
-          city: patientCity,
-          state: patientState,
-          postalCode: patientPostalCode,
-        },
-      ];
-    }
-
-    const patientEntry = createBundleEntry(patient);
-    entries.push(patientEntry);
-    const patientReference = createBundleEntryReference(patientEntry) as Reference<Patient>;
-
-    // Vital Signs
-    const heartRate = answers['heartRate']?.valueInteger;
-    if (heartRate !== undefined && heartRate < 0) {
-      throw new Error('Invalid Heart Rate');
-    }
-    const heartRateObservation = createObservation({
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-      category: VITAL_SIGNS_CATEGORY,
-      code: OBSERVATIONS_CODE_MAP.heartRate,
-      valueQuantity: {
-        value: heartRate,
-        unit: 'beats/min',
-        system: UCUM,
-        code: '/min',
-      },
-    });
-    const heartRateObservationEntry = heartRateObservation ? createBundleEntry(heartRateObservation) : undefined;
-    if (heartRateObservationEntry) entries.push(heartRateObservationEntry);
-
-    const bloodPressureDiastolic = answers['bloodPressureDiastolic']?.valueInteger;
-    if (bloodPressureDiastolic !== undefined && bloodPressureDiastolic < 0) {
-      throw new Error('Invalid Blood Pressure Diastolic');
-    }
-    const bloodPressureSystolic = answers['bloodPressureSystolic']?.valueInteger;
-    if (bloodPressureSystolic !== undefined && bloodPressureSystolic < 0) {
-      throw new Error('Invalid Blood Pressure Systolic');
-    }
-    const bloodPressureObservation = createObservation({
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-      category: VITAL_SIGNS_CATEGORY,
-      code: OBSERVATIONS_CODE_MAP.bloodPressure,
-      component: createBloodPressureObservationComponent({
-        diastolic: bloodPressureDiastolic,
-        systolic: bloodPressureSystolic,
-      }),
-    });
-    const bloodPressureObservationEntry = bloodPressureObservation
-      ? createBundleEntry(bloodPressureObservation)
-      : undefined;
-    if (bloodPressureObservationEntry) entries.push(bloodPressureObservationEntry);
-
-    const temperature = answers['temperature']?.valueDecimal;
-    const temperatureObservation = createObservation({
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-      category: VITAL_SIGNS_CATEGORY,
-      code: OBSERVATIONS_CODE_MAP.bodyTemperature,
-      valueQuantity: {
-        value: temperature,
-        unit: 'F',
-        system: UCUM,
-        code: '[degF]',
-      },
-    });
-    const temperatureObservationEntry = temperatureObservation ? createBundleEntry(temperatureObservation) : undefined;
-    if (temperatureObservationEntry) entries.push(temperatureObservationEntry);
-
-    const respiratoryRate = answers['respiratoryRate']?.valueDecimal;
-    if (respiratoryRate !== undefined && respiratoryRate < 0) {
-      throw new Error('Invalid Respiratory Rate');
-    }
-    const respiratoryRateObservation = createObservation({
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-      category: VITAL_SIGNS_CATEGORY,
-      code: OBSERVATIONS_CODE_MAP.respiratoryRate,
-      valueQuantity: {
-        value: respiratoryRate,
-        unit: 'breaths/min',
-        system: UCUM,
-        code: '/min',
-      },
-    });
-    const respiratoryRateObservationEntry = respiratoryRateObservation
-      ? createBundleEntry(respiratoryRateObservation)
-      : undefined;
-    if (respiratoryRateObservationEntry) entries.push(respiratoryRateObservationEntry);
-
-    const oxygenSaturation = answers['oxygenSaturation']?.valueDecimal;
-    const oxygenSaturationObservation = createObservation({
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-      category: VITAL_SIGNS_CATEGORY,
-      code: OBSERVATIONS_CODE_MAP.oxygenSaturation,
-      valueQuantity: {
-        value: oxygenSaturation,
-        unit: '%O2',
-        system: UCUM,
-        code: '%',
-      },
-    });
-    const oxygenSaturationObservationEntry = oxygenSaturationObservation
-      ? createBundleEntry(oxygenSaturationObservation)
-      : undefined;
-    if (oxygenSaturationObservationEntry) entries.push(oxygenSaturationObservationEntry);
-
-    const height = answers['height']?.valueDecimal;
-    const heightObservation = createObservation({
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-      category: VITAL_SIGNS_CATEGORY,
-      code: OBSERVATIONS_CODE_MAP.bodyHeight,
-      valueQuantity: {
-        value: height,
-        unit: 'in_i',
-        system: UCUM,
-        code: '[in_i]',
-      },
-    });
-    const heightObservationEntry = heightObservation ? createBundleEntry(heightObservation) : undefined;
-    if (heightObservationEntry) entries.push(heightObservationEntry);
-
-    const weight = answers['weight']?.valueDecimal;
-    const weightObservation = createObservation({
-      patient: patientReference,
-      response: input,
-      effectiveDateTime,
-      category: VITAL_SIGNS_CATEGORY,
-      code: OBSERVATIONS_CODE_MAP.bodyWeight,
-      valueQuantity: {
-        value: weight,
-        unit: 'lb_av',
-        system: UCUM,
-        code: '[lb_av]',
-      },
-    });
-    const weightObservationEntry = weightObservation ? createBundleEntry(weightObservation) : undefined;
-    if (weightObservationEntry) entries.push(weightObservationEntry);
-
-    // Create a panel observation for all vital signs if comments or other observations are present
-    const vitalSignsComments = answers['vitalSignsComments']?.valueString;
-    const vitalSignsHasMember = [
-      heartRateObservationEntry,
-      bloodPressureObservationEntry,
-      temperatureObservationEntry,
-      respiratoryRateObservationEntry,
-      oxygenSaturationObservationEntry,
-      heightObservationEntry,
-      weightObservationEntry,
-    ]
-      .filter((observationEntry) => observationEntry !== undefined)
-      .map((observationEntry) => createBundleEntryReference(observationEntry));
-
-    if (vitalSignsComments || vitalSignsHasMember) {
-      const vitalSignsPanelObservation = createObservation({
-        patient: patientReference,
-        response: input,
-        effectiveDateTime,
-        code: OBSERVATIONS_CODE_MAP.vitalSignsPanel,
-        hasMember: vitalSignsHasMember as Reference<Observation>[],
-        note: vitalSignsComments,
-      });
-      if (vitalSignsPanelObservation) entries.push(createBundleEntry(vitalSignsPanelObservation));
-    }
-
-    // Allergies
-    const allergyAnswers = getAllQuestionnaireAnswers(input)['allergySubstance'] || [];
-    for (const allergyAnswer of allergyAnswers) {
-      const allergy = createAllergy({ allergy: allergyAnswer.valueCoding, patient: patientReference });
-      if (allergy) entries.push(createBundleEntry(allergy));
-    }
-
-    // Diagnosis
-    const timeSensitiveDiagnosis = answers['timeSensitiveDiagnosis']?.valueCoding;
-    if (timeSensitiveDiagnosis) {
-      const diagnosisObservation = createObservation({
-        patient: patientReference,
-        response: input,
-        effectiveDateTime,
-        code: OBSERVATIONS_CODE_MAP.timeSensitiveDiagnosis,
-        valueCodeableConcept: { coding: [timeSensitiveDiagnosis] },
-      });
-      if (diagnosisObservation) entries.push(createBundleEntry(diagnosisObservation));
-    }
-
-    const chiefComplaint = answers['chiefComplaint']?.valueCoding;
-    const chiefComplaintComments = answers['chiefComplaintComments']?.valueString;
-    if (chiefComplaint || chiefComplaintComments) {
-      const chiefComplaintObservation = createObservation({
-        patient: patientReference,
-        response: input,
-        effectiveDateTime,
-        code: OBSERVATIONS_CODE_MAP.chiefComplaint,
-        valueCodeableConcept: chiefComplaint ? { coding: [chiefComplaint] } : undefined,
-        note: chiefComplaintComments,
-      });
-      if (chiefComplaintObservation) entries.push(createBundleEntry(chiefComplaintObservation));
-    }
-
-    // Transfer Info
-    const transferFacility = answers['transferFacility']?.valueReference;
-    if (!transferFacility?.reference?.startsWith('Organization')) {
-      throw new Error('Transferring origin is not a valid reference to an Organization');
-    }
-
-    const transferringPhysician: Practitioner = { resourceType: 'Practitioner' };
-    const transferPhysFirst = answers['transferPhysFirst']?.valueString;
-    const transferPhysLast = answers['transferPhysLast']?.valueString;
-    if (!transferPhysFirst || !transferPhysLast) {
-      throw new Error('Missing required Transferring Physician Name');
-    }
-    transferringPhysician.name = [{ given: [transferPhysFirst], family: transferPhysLast }];
-
-    const transferPhysQual = answers['transferPhysQual']?.valueString;
-    if (transferPhysQual) {
-      transferringPhysician.name[0].suffix = transferPhysQual.split(' ');
-    }
-
-    const transferPhysPhone = answers['transferPhysPhone']?.valueString;
-    if (!transferPhysPhone) {
-      throw new Error('Missing required Transferring Physician Phone');
-    }
-    transferringPhysician.telecom = [{ system: 'phone', value: transferPhysPhone }];
-
-    const transferringPhysicianEntry = createBundleEntry(transferringPhysician);
-    const transferringPhysicianReference = createBundleEntryReference(
-      transferringPhysicianEntry
-    ) as Reference<Practitioner>;
-    entries.push(transferringPhysicianEntry);
-    entries.push(
-      createBundleEntry({
-        resourceType: 'PractitionerRole',
-        practitioner: transferringPhysicianReference,
-        organization: transferFacility as Reference<Organization>,
-      })
-    );
-
-    // Create service request for transfer
-    const serviceRequest: ServiceRequest = {
-      resourceType: 'ServiceRequest',
-      // This code is a transfer from another facility
-      // https://uts.nlm.nih.gov/uts/umls/vocabulary/SNOMEDCT_US/19712007
-      code: {
-        coding: [{ system: 'http://snomed.info/sct', code: '19712007', display: 'Patient transfer (procedure)' }],
-        text: 'Patient transfer',
-      },
-      status: 'active',
-      intent: 'proposal',
-      subject: patientReference,
-      requester: transferringPhysicianReference,
-      supportingInfo: [{ ...createReference(event.input), display: 'Patient Intake Form' }],
-      requisition: { system: HAYS_MED_REQUISITION_SYSTEM, value: requisitionId },
-      authoredOn: new Date().toISOString(),
-    };
-    const serviceRequestEntry = createBundleEntry(serviceRequest);
-    const serviceRequestReference = createBundleEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
-    entries.push(serviceRequestEntry);
-
-    // Create communication request for call between transferring and accepting physicians
-    const communicationRequest: CommunicationRequest = {
-      resourceType: 'CommunicationRequest',
-      status: 'active',
-      payload: [
-        { contentString: transferringPhysician.telecom?.find((val) => val.system === 'phone')?.value as string },
-      ],
-      basedOn: [serviceRequestReference],
-    };
-    const communicationRequestEntry = createBundleEntry(communicationRequest);
-    const communicationRequestReference = createBundleEntryReference(
-      communicationRequestEntry
-    ) as Reference<CommunicationRequest>;
-    entries.push(communicationRequestEntry);
-
-    // Create a Task for the call
-    const callTask: Task = {
-      resourceType: 'Task',
-      status: 'ready',
-      priority: 'asap',
-      intent: 'plan',
-      code: { coding: [{ system: 'http://hl7.org/fhir/CodeSystem/task-code', code: 'fulfill' }] },
-      input: [
-        {
-          type: { coding: [{ code: 'comm_req', display: 'Communication request' }] },
-          valueReference: communicationRequestReference,
-        },
-        {
-          type: { coding: [{ code: 'subject_patient', display: 'Patient' }] },
-          valueReference: patientReference,
-        },
-      ],
-      basedOn: [serviceRequestReference],
-      focus: communicationRequestReference,
-    };
-    entries.push(createBundleEntry(callTask));
-
-    return entries;
+  const requisitionId = answers['requisitionId']?.valueString;
+  if (!requisitionId) {
+    throw new Error('Missing required requisitionId');
   }
 
-  const entries = parseAnswers();
+  const dateTime = answers['dateTime']?.valueDateTime;
+  if (!dateTime) {
+    throw new Error('Missing required Date/Time');
+  }
+  const effectiveDateTime = new Date(dateTime).toISOString();
 
-  // Execute the batch to create all resources at once
-  const responseBundle = await medplum.executeBatch({
-    resourceType: 'Bundle',
-    type: 'batch',
-    entry: entries,
+  const patientReference = createPatient(entries, answers);
+  createVitalSigns(entries, answers, questionnaireReference, patientReference, effectiveDateTime);
+  createAllergies(entries, input, patientReference);
+  createDiagnosis(entries, answers, questionnaireReference, patientReference, effectiveDateTime);
+  createTransferInfo(entries, answers, questionnaireReference, patientReference);
+
+  return entries;
+}
+
+function createPatient(entries: BundleEntry[], answers: Record<string, QuestionnaireResponseItemAnswer>) {
+  const patient: Patient = { resourceType: 'Patient' };
+
+  const firstName = answers['firstName']?.valueString;
+  const lastName = answers['lastName']?.valueString;
+  if (!firstName || !lastName) {
+    throw new Error('Missing required Patient Name');
+  }
+  patient.name = [{ given: [firstName], family: lastName }];
+
+  const dob = answers['birthdate']?.valueDate;
+  if (!dob) {
+    throw new Error('Missing required Patient Date of Birth');
+  }
+  patient.birthDate = dob;
+
+  const phone = answers['phone']?.valueString;
+  if (phone) {
+    patient.telecom = [{ system: 'phone', value: phone }];
+  }
+
+  const street = answers['street']?.valueString;
+  const city = answers['city']?.valueString;
+  const state = answers['state']?.valueCoding?.code;
+  const postalCode = answers['postalCode']?.valueString;
+  if (street || city || state || postalCode) {
+    patient.address = [
+      {
+        use: 'home',
+        type: 'physical',
+        line: street ? [street] : [],
+        city: city,
+        state: state,
+        postalCode: postalCode,
+      },
+    ];
+  }
+
+  const patientEntry = createBundleEntry(patient);
+  entries.push(patientEntry);
+  return createBundleEntryReference(patientEntry) as Reference<Patient>;
+}
+
+function createVitalSigns(
+  entries: BundleEntry[],
+  answers: Record<string, QuestionnaireResponseItemAnswer>,
+  questionnaireReference: Reference<QuestionnaireResponse>,
+  patientReference: Reference<Patient>,
+  effectiveDateTime: string
+) {
+  const heartRate = answers['heartRate']?.valueInteger;
+  if (heartRate !== undefined && heartRate < 0) {
+    throw new Error('Invalid Heart Rate');
+  }
+  const heartRateObservation = createObservation({
+    patient: patientReference,
+    derivedFrom: [questionnaireReference],
+    effectiveDateTime,
+    category: VITAL_SIGNS_CATEGORY,
+    code: OBSERVATIONS_CODE_MAP.heartRate,
+    valueQuantity: {
+      value: heartRate,
+      unit: 'beats/min',
+      system: UCUM,
+      code: '/min',
+    },
   });
+  const heartRateObservationEntry = heartRateObservation ? createBundleEntry(heartRateObservation) : undefined;
+  if (heartRateObservationEntry) entries.push(heartRateObservationEntry);
 
-  return responseBundle;
+  const bloodPressureDiastolic = answers['bloodPressureDiastolic']?.valueInteger;
+  if (bloodPressureDiastolic !== undefined && bloodPressureDiastolic < 0) {
+    throw new Error('Invalid Blood Pressure Diastolic');
+  }
+  const bloodPressureSystolic = answers['bloodPressureSystolic']?.valueInteger;
+  if (bloodPressureSystolic !== undefined && bloodPressureSystolic < 0) {
+    throw new Error('Invalid Blood Pressure Systolic');
+  }
+  const bloodPressureObservation = createObservation({
+    patient: patientReference,
+    derivedFrom: [questionnaireReference],
+    effectiveDateTime,
+    category: VITAL_SIGNS_CATEGORY,
+    code: OBSERVATIONS_CODE_MAP.bloodPressure,
+    component: createBloodPressureObservationComponent({
+      diastolic: bloodPressureDiastolic,
+      systolic: bloodPressureSystolic,
+    }),
+  });
+  const bloodPressureObservationEntry = bloodPressureObservation
+    ? createBundleEntry(bloodPressureObservation)
+    : undefined;
+  if (bloodPressureObservationEntry) entries.push(bloodPressureObservationEntry);
+
+  const temperature = answers['temperature']?.valueDecimal;
+  const temperatureObservation = createObservation({
+    patient: patientReference,
+    derivedFrom: [questionnaireReference],
+    effectiveDateTime,
+    category: VITAL_SIGNS_CATEGORY,
+    code: OBSERVATIONS_CODE_MAP.bodyTemperature,
+    valueQuantity: {
+      value: temperature,
+      unit: 'F',
+      system: UCUM,
+      code: '[degF]',
+    },
+  });
+  const temperatureObservationEntry = temperatureObservation ? createBundleEntry(temperatureObservation) : undefined;
+  if (temperatureObservationEntry) entries.push(temperatureObservationEntry);
+
+  const respiratoryRate = answers['respiratoryRate']?.valueDecimal;
+  if (respiratoryRate !== undefined && respiratoryRate < 0) {
+    throw new Error('Invalid Respiratory Rate');
+  }
+  const respiratoryRateObservation = createObservation({
+    patient: patientReference,
+    derivedFrom: [questionnaireReference],
+    effectiveDateTime,
+    category: VITAL_SIGNS_CATEGORY,
+    code: OBSERVATIONS_CODE_MAP.respiratoryRate,
+    valueQuantity: {
+      value: respiratoryRate,
+      unit: 'breaths/min',
+      system: UCUM,
+      code: '/min',
+    },
+  });
+  const respiratoryRateObservationEntry = respiratoryRateObservation
+    ? createBundleEntry(respiratoryRateObservation)
+    : undefined;
+  if (respiratoryRateObservationEntry) entries.push(respiratoryRateObservationEntry);
+
+  const oxygenSaturation = answers['oxygenSaturation']?.valueDecimal;
+  const oxygenSaturationObservation = createObservation({
+    patient: patientReference,
+    derivedFrom: [questionnaireReference],
+    effectiveDateTime,
+    category: VITAL_SIGNS_CATEGORY,
+    code: OBSERVATIONS_CODE_MAP.oxygenSaturation,
+    valueQuantity: {
+      value: oxygenSaturation,
+      unit: '%O2',
+      system: UCUM,
+      code: '%',
+    },
+  });
+  const oxygenSaturationObservationEntry = oxygenSaturationObservation
+    ? createBundleEntry(oxygenSaturationObservation)
+    : undefined;
+  if (oxygenSaturationObservationEntry) entries.push(oxygenSaturationObservationEntry);
+
+  const height = answers['height']?.valueDecimal;
+  const heightObservation = createObservation({
+    patient: patientReference,
+    derivedFrom: [questionnaireReference],
+    effectiveDateTime,
+    category: VITAL_SIGNS_CATEGORY,
+    code: OBSERVATIONS_CODE_MAP.bodyHeight,
+    valueQuantity: {
+      value: height,
+      unit: 'in_i',
+      system: UCUM,
+      code: '[in_i]',
+    },
+  });
+  const heightObservationEntry = heightObservation ? createBundleEntry(heightObservation) : undefined;
+  if (heightObservationEntry) entries.push(heightObservationEntry);
+
+  const weight = answers['weight']?.valueDecimal;
+  const weightObservation = createObservation({
+    patient: patientReference,
+    derivedFrom: [questionnaireReference],
+    effectiveDateTime,
+    category: VITAL_SIGNS_CATEGORY,
+    code: OBSERVATIONS_CODE_MAP.bodyWeight,
+    valueQuantity: {
+      value: weight,
+      unit: 'lb_av',
+      system: UCUM,
+      code: '[lb_av]',
+    },
+  });
+  const weightObservationEntry = weightObservation ? createBundleEntry(weightObservation) : undefined;
+  if (weightObservationEntry) entries.push(weightObservationEntry);
+
+  // Create a panel observation for all vital signs if comments or other observations are present
+  const vitalSignsComments = answers['vitalSignsComments']?.valueString;
+  const vitalSignsHasMember = [
+    heartRateObservationEntry,
+    bloodPressureObservationEntry,
+    temperatureObservationEntry,
+    respiratoryRateObservationEntry,
+    oxygenSaturationObservationEntry,
+    heightObservationEntry,
+    weightObservationEntry,
+  ]
+    .filter((observationEntry) => observationEntry !== undefined)
+    .map((observationEntry) => createBundleEntryReference(observationEntry));
+
+  if (vitalSignsComments || vitalSignsHasMember) {
+    const vitalSignsPanelObservation = createObservation({
+      patient: patientReference,
+      derivedFrom: [questionnaireReference],
+      effectiveDateTime,
+      code: OBSERVATIONS_CODE_MAP.vitalSignsPanel,
+      hasMember: vitalSignsHasMember as Reference<Observation>[],
+      note: vitalSignsComments,
+    });
+    if (vitalSignsPanelObservation) entries.push(createBundleEntry(vitalSignsPanelObservation));
+  }
+}
+
+function createAllergies(entries: BundleEntry[], input: QuestionnaireResponse, patientReference: Reference<Patient>) {
+  const allergyAnswers = getAllQuestionnaireAnswers(input)['allergySubstance'] || [];
+  allergyAnswers.forEach((allergyAnswer) => {
+    const allergy = createAllergy({ allergy: allergyAnswer.valueCoding, patient: patientReference });
+    if (allergy) {
+      entries.push(createBundleEntry(allergy));
+    }
+  });
+}
+
+function createDiagnosis(
+  entries: BundleEntry[],
+  answers: Record<string, QuestionnaireResponseItemAnswer>,
+  questionnaireReference: Reference<QuestionnaireResponse>,
+  patientReference: Reference<Patient>,
+  effectiveDateTime: string
+) {
+  const timeSensitiveDiagnosis = answers['timeSensitiveDiagnosis']?.valueCoding;
+  if (timeSensitiveDiagnosis) {
+    const diagnosisObservation = createObservation({
+      patient: patientReference,
+      derivedFrom: [questionnaireReference],
+      effectiveDateTime,
+      code: OBSERVATIONS_CODE_MAP.timeSensitiveDiagnosis,
+      valueCodeableConcept: { coding: [timeSensitiveDiagnosis] },
+    });
+    if (diagnosisObservation) {
+      entries.push(createBundleEntry(diagnosisObservation));
+    }
+  }
+
+  const chiefComplaint = answers['chiefComplaint']?.valueCoding;
+  const chiefComplaintComments = answers['chiefComplaintComments']?.valueString;
+  if (chiefComplaint || chiefComplaintComments) {
+    const chiefComplaintObservation = createObservation({
+      patient: patientReference,
+      derivedFrom: [questionnaireReference],
+      effectiveDateTime,
+      code: OBSERVATIONS_CODE_MAP.chiefComplaint,
+      valueCodeableConcept: chiefComplaint ? { coding: [chiefComplaint] } : undefined,
+      note: chiefComplaintComments,
+    });
+    if (chiefComplaintObservation) {
+      entries.push(createBundleEntry(chiefComplaintObservation));
+    }
+  }
+}
+
+function createTransferInfo(
+  entries: BundleEntry[],
+  answers: Record<string, QuestionnaireResponseItemAnswer>,
+  questionnaireReference: Reference<QuestionnaireResponse>,
+  patientReference: Reference<Patient>
+) {
+  const transferringFacility = answers['transferFacility']?.valueReference;
+  if (!transferringFacility?.reference?.startsWith('Organization')) {
+    throw new Error('Transferring origin is not a valid reference to an Organization');
+  }
+
+  const transferringPhysician: Practitioner = { resourceType: 'Practitioner' };
+  const transferringPhysicianFirstName = answers['transferPhysFirst']?.valueString;
+  const transferringPhysicianLastName = answers['transferPhysLast']?.valueString;
+  if (!transferringPhysicianFirstName || !transferringPhysicianLastName) {
+    throw new Error('Missing required Transferring Physician Name');
+  }
+  transferringPhysician.name = [{ given: [transferringPhysicianFirstName], family: transferringPhysicianLastName }];
+
+  const transferringPhysicianQualifications = answers['transferPhysQual']?.valueString;
+  if (transferringPhysicianQualifications) {
+    transferringPhysician.name[0].suffix = transferringPhysicianQualifications.split(' ');
+  }
+
+  const transferringPhysicianPhone = answers['transferPhysPhone']?.valueString;
+  if (!transferringPhysicianPhone) {
+    throw new Error('Missing required Transferring Physician Phone');
+  }
+  transferringPhysician.telecom = [{ system: 'phone', value: transferringPhysicianPhone }];
+
+  const transferringPhysicianEntry = createBundleEntry(transferringPhysician);
+  const transferringPhysicianReference = createBundleEntryReference(
+    transferringPhysicianEntry
+  ) as Reference<Practitioner>;
+  entries.push(transferringPhysicianEntry);
+  const transferringPhysicianPractitionerRole: PractitionerRole = {
+    resourceType: 'PractitionerRole',
+    practitioner: transferringPhysicianReference,
+    organization: transferringFacility as Reference<Organization>,
+  };
+  entries.push(createBundleEntry(transferringPhysicianPractitionerRole));
+
+  const serviceRequest: ServiceRequest = {
+    resourceType: 'ServiceRequest',
+    code: {
+      coding: [{ system: 'http://snomed.info/sct', code: '19712007', display: 'Patient transfer (procedure)' }],
+      text: 'Patient transfer',
+    },
+    status: 'active',
+    intent: 'proposal',
+    subject: patientReference,
+    requester: transferringPhysicianReference,
+    supportingInfo: [{ ...questionnaireReference, display: 'Patient Intake Form' }],
+    requisition: { system: HAYS_MED_REQUISITION_SYSTEM, value: answers['requisitionId']?.valueString },
+    authoredOn: new Date().toISOString(),
+  };
+  const serviceRequestEntry = createBundleEntry(serviceRequest);
+  const serviceRequestReference = createBundleEntryReference(serviceRequestEntry) as Reference<ServiceRequest>;
+  entries.push(serviceRequestEntry);
+
+  const communicationRequest: CommunicationRequest = {
+    resourceType: 'CommunicationRequest',
+    status: 'active',
+    payload: [{ contentString: transferringPhysician.telecom?.find((val) => val.system === 'phone')?.value as string }],
+    basedOn: [serviceRequestReference],
+  };
+  const communicationRequestEntry = createBundleEntry(communicationRequest);
+  const communicationRequestReference = createBundleEntryReference(
+    communicationRequestEntry
+  ) as Reference<CommunicationRequest>;
+  entries.push(communicationRequestEntry);
+
+  const callTask: Task = {
+    resourceType: 'Task',
+    status: 'ready',
+    priority: 'asap',
+    intent: 'plan',
+    code: { coding: [{ system: 'http://hl7.org/fhir/CodeSystem/task-code', code: 'fulfill' }] },
+    input: [
+      {
+        type: { coding: [{ code: 'comm_req', display: 'Communication request' }] },
+        valueReference: communicationRequestReference,
+      },
+      {
+        type: { coding: [{ code: 'subject_patient', display: 'Patient' }] },
+        valueReference: patientReference,
+      },
+    ],
+    basedOn: [serviceRequestReference],
+    focus: communicationRequestReference,
+  };
+  entries.push(createBundleEntry(callTask));
 }

@@ -496,7 +496,7 @@ describe('Patient Intake Bot', async () => {
 
     await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required Patient Birthdate');
+    }).rejects.toThrow('Missing required Patient Date of Birth');
   });
 
   it('throws error on missing transferring physician name', async () => {
