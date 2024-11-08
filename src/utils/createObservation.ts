@@ -1,17 +1,8 @@
-import { createReference } from '@medplum/core';
-import {
-  Reference,
-  Patient,
-  QuestionnaireResponse,
-  CodeableConcept,
-  Observation,
-  ObservationComponent,
-} from '@medplum/fhirtypes';
+import { Reference, Patient, CodeableConcept, Observation, ObservationComponent } from '@medplum/fhirtypes';
 
 /**
  * Creates an Observation resource.
  * @param patient The patient reference.
- * @param response The QuestionnaireResponse that generated the Observation.
  * @param effectiveDateTime The effective date/time of the Observation.
  * @param category The category of the Observation.
  * @param code The code of the Observation.
@@ -20,11 +11,11 @@ import {
  * @param component The component of the Observation.
  * @param hasMember The hasMember of the Observation.
  * @param note The note of the Observation.
+ * @param derivedFrom The derivedFrom of the Observation.
  * @returns The Observation resource, or undefined if no value nor component nor note is defined.
  */
 export function createObservation({
   patient,
-  response,
   effectiveDateTime,
   category,
   code,
@@ -33,9 +24,9 @@ export function createObservation({
   component,
   hasMember,
   note,
+  derivedFrom,
 }: {
   patient: Reference<Patient>;
-  response: QuestionnaireResponse;
   effectiveDateTime: string;
   category?: CodeableConcept;
   code: CodeableConcept;
@@ -44,6 +35,7 @@ export function createObservation({
   component?: ObservationComponent[];
   note?: string;
   hasMember?: Observation['hasMember'];
+  derivedFrom?: Observation['derivedFrom'];
 }): Observation | undefined {
   if (!valueQuantity && !valueCodeableConcept && !component && !note) return undefined;
 
@@ -52,12 +44,12 @@ export function createObservation({
     status: 'final',
     subject: patient,
     effectiveDateTime,
-    derivedFrom: [createReference(response)],
     code,
     category: category ? [category] : undefined,
     component,
     note: note ? [{ text: note, time: effectiveDateTime }] : undefined,
     hasMember,
+    derivedFrom,
   };
 
   if (valueQuantity) {

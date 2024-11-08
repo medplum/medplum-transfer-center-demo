@@ -102,426 +102,538 @@ describe('Patient Intake Bot', async () => {
     }, [] as QuestionnaireResponseItem[]);
   }
 
-  it('successfully creates resources', async () => {
-    const input: QuestionnaireResponse = createInput([
-      {
-        linkId: 'phone',
-        answer: [{ valueString: '123-456-7890' }],
-      },
-      {
-        linkId: 'street',
-        answer: [{ valueString: '123 Main St' }],
-      },
-      {
-        linkId: 'city',
-        answer: [{ valueString: 'Sunnyvale' }],
-      },
-      {
-        linkId: 'state',
-        answer: [{ valueCoding: { system: 'http://hl7.org/fhir/us/core/ValueSet/us-core-usps-state', code: 'CA' } }],
-      },
-      {
-        linkId: 'postalCode',
-        answer: [{ valueString: '95008' }],
-      },
-      {
-        linkId: 'vitalSigns',
-        item: [
-          {
-            linkId: 'bloodPressureSystolic',
-            answer: [{ valueInteger: 120 }],
-          },
-          {
-            linkId: 'bloodPressureDiastolic',
-            answer: [{ valueInteger: 80 }],
-          },
-          {
-            linkId: 'temperature',
-            answer: [{ valueDecimal: 98.6 }],
-          },
-          {
-            linkId: 'heartRate',
-            answer: [{ valueInteger: 72 }],
-          },
-          {
-            linkId: 'respiratoryRate',
-            answer: [{ valueDecimal: 12 }],
-          },
-          {
-            linkId: 'oxygenSaturation',
-            answer: [{ valueDecimal: 98 }],
-          },
-          {
-            linkId: 'height',
-            answer: [{ valueDecimal: 65 }],
-          },
-          {
-            linkId: 'weight',
-            answer: [{ valueDecimal: 133 }],
-          },
-          {
-            linkId: 'vitalSignsComments',
-            answer: [{ valueString: 'Pay attention to the heart rate' }],
-          },
-        ],
-      },
-      {
-        linkId: 'allergies',
-        item: [
-          {
-            linkId: 'allergySubstance',
-            answer: [
-              {
-                valueCoding: {
-                  system: SNOMED,
-                  code: '111088007',
-                  display: 'Latex (substance)',
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        linkId: 'allergies',
-        item: [
-          {
-            linkId: 'allergySubstance',
-            answer: [
-              {
-                valueCoding: {
-                  system: SNOMED,
-                  code: '256259004',
-                  display: 'Pollen (substance)',
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        linkId: 'transferInfo',
-        item: [
-          {
-            linkId: 'timeSensitiveDiagnosis',
-            answer: [
-              {
-                valueCoding: {
-                  system: SNOMED,
-                  code: '401303003',
-                  display: 'STEMI',
-                },
-              },
-            ],
-          },
-          {
-            linkId: 'chiefComplaint',
-            answer: [
-              {
-                valueCoding: {
-                  system: ICD10,
-                  code: 'I50',
-                  display: 'Heart failure',
-                },
-              },
-            ],
-          },
-          {
-            linkId: 'chiefComplaintComments',
-            answer: [{ valueString: 'Shortness of breath' }],
-          },
-        ],
-      },
-    ]);
+  describe('Validate Input', async () => {
+    it('throws error on missing questionnaire', async () => {
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+      };
 
-    await handler(medplum, { bot, input, contentType, secrets: {} });
-
-    // Patient
-    const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
-    expect(patient).toBeDefined();
-    expect(patient.name).toEqual([{ family: 'Simpson', given: ['Marge'] }]);
-    expect(patient.birthDate).toEqual('1958-03-19');
-    expect(patient.telecom).toEqual([{ system: 'phone', value: '123-456-7890' }]);
-    expect(patient.address).toEqual([
-      {
-        use: 'home',
-        type: 'physical',
-        line: ['123 Main St'],
-        city: 'Sunnyvale',
-        state: 'CA',
-        postalCode: '95008',
-      },
-    ]);
-
-    // Diagnosis
-    const timeSensitiveDiagnosisObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|78026-2`,
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Missing required Questionnaire');
     });
-    expect(timeSensitiveDiagnosisObservation).toHaveLength(1);
-    expect(timeSensitiveDiagnosisObservation[0].valueCodeableConcept).toEqual({
-      coding: [
+
+    it('throws error on invalid questionnaire', async () => {
+      const otherQuestionnaire = await medplum.createResource({
+        resourceType: 'Questionnaire',
+        title: 'Other Questionnaire',
+        status: 'active',
+      });
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+        questionnaire: getReferenceString(otherQuestionnaire),
+      };
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Invalid questionnaire');
+    });
+  });
+
+  describe('Patient', async () => {
+    it('successfully creates the Patient resource', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'phone',
+          answer: [{ valueString: '123-456-7890' }],
+        },
+        {
+          linkId: 'street',
+          answer: [{ valueString: '123 Main St' }],
+        },
+        {
+          linkId: 'city',
+          answer: [{ valueString: 'Sunnyvale' }],
+        },
+        {
+          linkId: 'state',
+          answer: [{ valueCoding: { system: 'http://hl7.org/fhir/us/core/ValueSet/us-core-usps-state', code: 'CA' } }],
+        },
+        {
+          linkId: 'postalCode',
+          answer: [{ valueString: '95008' }],
+        },
+      ]);
+
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+
+      const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
+      expect(patient).toBeDefined();
+      expect(patient.name).toEqual([{ family: 'Simpson', given: ['Marge'] }]);
+      expect(patient.birthDate).toEqual('1958-03-19');
+      expect(patient.telecom).toEqual([{ system: 'phone', value: '123-456-7890' }]);
+      expect(patient.address).toEqual([
+        {
+          use: 'home',
+          type: 'physical',
+          line: ['123 Main St'],
+          city: 'Sunnyvale',
+          state: 'CA',
+          postalCode: '95008',
+        },
+      ]);
+    });
+    it('throws error on missing requisitionId', async () => {
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+        questionnaire: getReferenceString(questionnaire),
+        item: removeItemsRecursively(requiredAnswerItems, ['requisitionId']),
+      };
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Missing required requisitionId');
+    });
+
+    it('throws error on missing dateTime', async () => {
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+        questionnaire: getReferenceString(questionnaire),
+        item: removeItemsRecursively(requiredAnswerItems, ['dateTime']),
+      };
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Missing required Date/Time');
+    });
+
+    it('throws error on missing patient name', async () => {
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+        questionnaire: getReferenceString(questionnaire),
+        item: removeItemsRecursively(requiredAnswerItems, ['firstName', 'lastName']),
+      };
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Missing required Patient Name');
+    });
+
+    it('throws error on missing patient dob', async () => {
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+        questionnaire: getReferenceString(questionnaire),
+        item: removeItemsRecursively(requiredAnswerItems, ['birthdate']),
+      };
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Missing required Patient Date of Birth');
+    });
+  });
+
+  describe('Vital Signs', async () => {
+    it('successfully creates Vital Signs resources', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'vitalSigns',
+          item: [
+            {
+              linkId: 'bloodPressureSystolic',
+              answer: [{ valueInteger: 120 }],
+            },
+            {
+              linkId: 'bloodPressureDiastolic',
+              answer: [{ valueInteger: 80 }],
+            },
+            {
+              linkId: 'temperature',
+              answer: [{ valueDecimal: 98.6 }],
+            },
+            {
+              linkId: 'heartRate',
+              answer: [{ valueInteger: 72 }],
+            },
+            {
+              linkId: 'respiratoryRate',
+              answer: [{ valueDecimal: 12 }],
+            },
+            {
+              linkId: 'oxygenSaturation',
+              answer: [{ valueDecimal: 98 }],
+            },
+            {
+              linkId: 'height',
+              answer: [{ valueDecimal: 65 }],
+            },
+            {
+              linkId: 'weight',
+              answer: [{ valueDecimal: 133 }],
+            },
+            {
+              linkId: 'vitalSignsComments',
+              answer: [{ valueString: 'Pay attention to the heart rate' }],
+            },
+          ],
+        },
+      ]);
+
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+
+      // Patient
+      const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
+      expect(patient).toBeDefined();
+
+      // Vital Signs
+      const bloodPressureObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|85354-9`,
+      });
+      expect(bloodPressureObservation).toHaveLength(1);
+      expect(bloodPressureObservation[0].component).toHaveLength(2);
+      expect(bloodPressureObservation[0].component?.[0].code.coding?.[0].code).toEqual('8462-4');
+      expect(bloodPressureObservation[0].component?.[0].valueQuantity).toEqual({
+        value: 80,
+        unit: 'mmHg',
+        system: UCUM,
+        code: 'mm[Hg]',
+      });
+      expect(bloodPressureObservation[0].component?.[1].code.coding?.[0].code).toEqual('8480-6');
+      expect(bloodPressureObservation[0].component?.[1].valueQuantity).toEqual({
+        value: 120,
+        unit: 'mmHg',
+        system: UCUM,
+        code: 'mm[Hg]',
+      });
+
+      const temperatureObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|8310-5`,
+      });
+      expect(temperatureObservation).toHaveLength(1);
+      expect(temperatureObservation[0].valueQuantity).toEqual({
+        value: 98.6,
+        unit: 'F',
+        system: UCUM,
+        code: '[degF]',
+      });
+
+      const heartRateObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|8867-4`,
+      });
+      expect(heartRateObservation).toHaveLength(1);
+      expect(heartRateObservation[0].valueQuantity).toEqual({
+        value: 72,
+        unit: 'beats/min',
+        system: UCUM,
+        code: '/min',
+      });
+
+      const respiratoryRateObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|9279-1`,
+      });
+      expect(respiratoryRateObservation).toHaveLength(1);
+      expect(respiratoryRateObservation[0].valueQuantity).toEqual({
+        value: 12,
+        unit: 'breaths/min',
+        system: UCUM,
+        code: '/min',
+      });
+
+      const oxygenSaturationObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|59408-5`,
+      });
+      expect(oxygenSaturationObservation).toHaveLength(1);
+      expect(oxygenSaturationObservation[0].valueQuantity).toEqual({
+        value: 98,
+        unit: '%O2',
+        system: UCUM,
+        code: '%',
+      });
+
+      const heightObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|8302-2`,
+      });
+      expect(heightObservation).toHaveLength(1);
+      expect(heightObservation[0].valueQuantity).toEqual({
+        value: 65,
+        unit: 'in_i',
+        system: UCUM,
+        code: '[in_i]',
+      });
+
+      const weightObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|29463-7`,
+      });
+      expect(weightObservation).toHaveLength(1);
+      expect(weightObservation[0].valueQuantity).toEqual({
+        value: 133,
+        unit: 'lb_av',
+        system: UCUM,
+        code: '[lb_av]',
+      });
+
+      const vitalSignsPanelObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|85353-1`,
+      });
+      expect(vitalSignsPanelObservation).toHaveLength(1);
+      expect(vitalSignsPanelObservation[0].note?.[0].text).toEqual('Pay attention to the heart rate');
+      expect(vitalSignsPanelObservation[0].hasMember).toHaveLength(7);
+      expect(vitalSignsPanelObservation[0].hasMember).toEqual(
+        expect.arrayContaining([
+          createReference(bloodPressureObservation[0]),
+          createReference(temperatureObservation[0]),
+          createReference(heartRateObservation[0]),
+          createReference(respiratoryRateObservation[0]),
+          createReference(oxygenSaturationObservation[0]),
+          createReference(heightObservation[0]),
+          createReference(weightObservation[0]),
+        ])
+      );
+    });
+
+    it('does not create vital signs panel if no vital signs are present', async () => {
+      const input: QuestionnaireResponse = createInput([]);
+
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+
+      const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
+      expect(patient).toBeDefined();
+
+      const vitalSignsPanelObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|85353-1`,
+      });
+      expect(vitalSignsPanelObservation).toHaveLength(0);
+    });
+
+    it('throws error on negative diastolic blood pressure', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'vitalSigns',
+          item: [
+            {
+              linkId: 'bloodPressureDiastolic',
+              answer: [{ valueInteger: -80 }],
+            },
+          ],
+        },
+      ]);
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Invalid Diastolic Blood Pressure. Received: -80');
+    });
+
+    it('throws error on negative systolic blood pressure', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'vitalSigns',
+          item: [
+            {
+              linkId: 'bloodPressureSystolic',
+              answer: [{ valueInteger: -120 }],
+            },
+          ],
+        },
+      ]);
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Invalid Systolic Blood Pressure. Received: -120');
+    });
+
+    it('throws error on negative respiratory rate', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'vitalSigns',
+          item: [
+            {
+              linkId: 'respiratoryRate',
+              answer: [{ valueDecimal: -12 }],
+            },
+          ],
+        },
+      ]);
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Invalid Respiratory Rate. Received: -12');
+    });
+  });
+
+  describe('Allergies', async () => {
+    it('successfully creates allergy resources', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'allergies',
+          item: [
+            {
+              linkId: 'allergySubstance',
+              answer: [
+                {
+                  valueCoding: {
+                    system: SNOMED,
+                    code: '111088007',
+                    display: 'Latex (substance)',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          linkId: 'allergies',
+          item: [
+            {
+              linkId: 'allergySubstance',
+              answer: [
+                {
+                  valueCoding: {
+                    system: SNOMED,
+                    code: '256259004',
+                    display: 'Pollen (substance)',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+
+      // Patient
+      const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
+      expect(patient).toBeDefined();
+
+      // Allergies
+      const allergies = await medplum.searchResources('AllergyIntolerance', {
+        patient: getReferenceString(patient),
+      });
+      expect(allergies).toHaveLength(2);
+      expect(allergies[0].code?.coding).toEqual([
         {
           system: SNOMED,
-          code: '401303003',
-          display: 'STEMI',
+          code: '111088007',
+          display: 'Latex (substance)',
         },
-      ],
-    });
-
-    const chiefComplaintObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|46239-0`,
-    });
-    expect(chiefComplaintObservation).toHaveLength(1);
-    expect(chiefComplaintObservation[0].valueCodeableConcept).toEqual({
-      coding: [
+      ]);
+      expect(allergies[1].code?.coding).toEqual([
         {
-          system: ICD10,
-          code: 'I50',
-          display: 'Heart failure',
+          system: SNOMED,
+          code: '256259004',
+          display: 'Pollen (substance)',
         },
-      ],
+      ]);
     });
-    expect(chiefComplaintObservation[0].note?.[0].text).toEqual('Shortness of breath');
-
-    // Vital Signs
-    const bloodPressureObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|85354-9`,
-    });
-    expect(bloodPressureObservation).toHaveLength(1);
-    expect(bloodPressureObservation[0].component).toHaveLength(2);
-    expect(bloodPressureObservation[0].component?.[0].code.coding?.[0].code).toEqual('8462-4');
-    expect(bloodPressureObservation[0].component?.[0].valueQuantity).toEqual({
-      value: 80,
-      unit: 'mmHg',
-      system: UCUM,
-      code: 'mm[Hg]',
-    });
-    expect(bloodPressureObservation[0].component?.[1].code.coding?.[0].code).toEqual('8480-6');
-    expect(bloodPressureObservation[0].component?.[1].valueQuantity).toEqual({
-      value: 120,
-      unit: 'mmHg',
-      system: UCUM,
-      code: 'mm[Hg]',
-    });
-
-    const temperatureObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|8310-5`,
-    });
-    expect(temperatureObservation).toHaveLength(1);
-    expect(temperatureObservation[0].valueQuantity).toEqual({
-      value: 98.6,
-      unit: 'F',
-      system: UCUM,
-      code: '[degF]',
-    });
-
-    const heartRateObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|8867-4`,
-    });
-    expect(heartRateObservation).toHaveLength(1);
-    expect(heartRateObservation[0].valueQuantity).toEqual({
-      value: 72,
-      unit: 'beats/min',
-      system: UCUM,
-      code: '/min',
-    });
-
-    const respiratoryRateObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|9279-1`,
-    });
-    expect(respiratoryRateObservation).toHaveLength(1);
-    expect(respiratoryRateObservation[0].valueQuantity).toEqual({
-      value: 12,
-      unit: 'breaths/min',
-      system: UCUM,
-      code: '/min',
-    });
-
-    const oxygenSaturationObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|59408-5`,
-    });
-    expect(oxygenSaturationObservation).toHaveLength(1);
-    expect(oxygenSaturationObservation[0].valueQuantity).toEqual({
-      value: 98,
-      unit: '%O2',
-      system: UCUM,
-      code: '%',
-    });
-
-    const heightObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|8302-2`,
-    });
-    expect(heightObservation).toHaveLength(1);
-    expect(heightObservation[0].valueQuantity).toEqual({
-      value: 65,
-      unit: 'in_i',
-      system: UCUM,
-      code: '[in_i]',
-    });
-
-    const weightObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|29463-7`,
-    });
-    expect(weightObservation).toHaveLength(1);
-    expect(weightObservation[0].valueQuantity).toEqual({
-      value: 133,
-      unit: 'lb_av',
-      system: UCUM,
-      code: '[lb_av]',
-    });
-
-    const vitalSignsPanelObservation = await medplum.searchResources('Observation', {
-      subject: getReferenceString(patient),
-      code: `${LOINC}|85353-1`,
-    });
-    expect(vitalSignsPanelObservation).toHaveLength(1);
-    expect(vitalSignsPanelObservation[0].note?.[0].text).toEqual('Pay attention to the heart rate');
-    expect(vitalSignsPanelObservation[0].hasMember).toHaveLength(7);
-    expect(vitalSignsPanelObservation[0].hasMember).toEqual(
-      expect.arrayContaining([
-        createReference(bloodPressureObservation[0]),
-        createReference(temperatureObservation[0]),
-        createReference(heartRateObservation[0]),
-        createReference(respiratoryRateObservation[0]),
-        createReference(oxygenSaturationObservation[0]),
-        createReference(heightObservation[0]),
-        createReference(weightObservation[0]),
-      ])
-    );
-
-    // Allergies
-    const allergies = await medplum.searchResources('AllergyIntolerance', {
-      patient: getReferenceString(patient),
-    });
-    expect(allergies).toHaveLength(2);
-    expect(allergies[0].code?.coding).toEqual([
-      {
-        system: SNOMED,
-        code: '111088007',
-        display: 'Latex (substance)',
-      },
-    ]);
-    expect(allergies[1].code?.coding).toEqual([
-      {
-        system: SNOMED,
-        code: '256259004',
-        display: 'Pollen (substance)',
-      },
-    ]);
   });
 
-  it('throws error on missing questionnaire', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-    };
+  describe('Diagnosis', async () => {
+    it('successfully creates diagnosis resources', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'transferInfo',
+          item: [
+            {
+              linkId: 'timeSensitiveDiagnosis',
+              answer: [
+                {
+                  valueCoding: {
+                    system: SNOMED,
+                    code: '401303003',
+                    display: 'STEMI',
+                  },
+                },
+              ],
+            },
+            {
+              linkId: 'chiefComplaint',
+              answer: [
+                {
+                  valueCoding: {
+                    system: ICD10,
+                    code: 'I50',
+                    display: 'Heart failure',
+                  },
+                },
+              ],
+            },
+            {
+              linkId: 'chiefComplaintComments',
+              answer: [{ valueString: 'Shortness of breath' }],
+            },
+          ],
+        },
+      ]);
 
-    await expect(async () => {
       await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Questionnaire is required');
-  });
 
-  it('throws error on invalid questionnaire', async () => {
-    const otherQuestionnaire = await medplum.createResource({
-      resourceType: 'Questionnaire',
-      title: 'Other Questionnaire',
-      status: 'active',
+      // Patient
+      const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
+      expect(patient).toBeDefined();
+
+      // Diagnosis
+      const timeSensitiveDiagnosisObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|78026-2`,
+      });
+      expect(timeSensitiveDiagnosisObservation).toHaveLength(1);
+      expect(timeSensitiveDiagnosisObservation[0].valueCodeableConcept).toEqual({
+        coding: [
+          {
+            system: SNOMED,
+            code: '401303003',
+            display: 'STEMI',
+          },
+        ],
+      });
+
+      const chiefComplaintObservation = await medplum.searchResources('Observation', {
+        subject: getReferenceString(patient),
+        code: `${LOINC}|46239-0`,
+      });
+      expect(chiefComplaintObservation).toHaveLength(1);
+      expect(chiefComplaintObservation[0].valueCodeableConcept).toEqual({
+        coding: [
+          {
+            system: ICD10,
+            code: 'I50',
+            display: 'Heart failure',
+          },
+        ],
+      });
+      expect(chiefComplaintObservation[0].note?.[0].text).toEqual('Shortness of breath');
     });
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: getReferenceString(otherQuestionnaire),
-    };
-
-    await expect(async () => {
-      await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Invalid questionnaire');
   });
 
-  it('throws error on missing requisitionId', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: getReferenceString(questionnaire),
-      item: removeItemsRecursively(requiredAnswerItems, ['requisitionId']),
-    };
+  describe('Transfer Info', async () => {
+    it('throws error on missing transferring physician name', async () => {
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+        questionnaire: getReferenceString(questionnaire),
+        item: removeItemsRecursively(requiredAnswerItems, ['transferPhysFirst', 'transferPhysLast']),
+      };
 
-    await expect(async () => {
-      await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required requisitionId');
-  });
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Missing required Transferring Physician Name');
+    });
 
-  it('throws error on missing dateTime', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: getReferenceString(questionnaire),
-      item: removeItemsRecursively(requiredAnswerItems, ['dateTime']),
-    };
+    it('throws error on missing transferring physician phone', async () => {
+      const input: QuestionnaireResponse = {
+        resourceType: 'QuestionnaireResponse',
+        status: 'completed',
+        questionnaire: getReferenceString(questionnaire),
+        item: removeItemsRecursively(requiredAnswerItems, ['transferPhysPhone']),
+      };
 
-    await expect(async () => {
-      await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required Date/Time');
-  });
-
-  it('throws error on missing patient name', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: getReferenceString(questionnaire),
-      item: removeItemsRecursively(requiredAnswerItems, ['firstName', 'lastName']),
-    };
-
-    await expect(async () => {
-      await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required Patient Name');
-  });
-
-  it('throws error on missing patient birthdate', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: getReferenceString(questionnaire),
-      item: removeItemsRecursively(requiredAnswerItems, ['birthdate']),
-    };
-
-    await expect(async () => {
-      await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required Patient Birthdate');
-  });
-
-  it('throws error on missing transferring physician name', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: getReferenceString(questionnaire),
-      item: removeItemsRecursively(requiredAnswerItems, ['transferPhysFirst', 'transferPhysLast']),
-    };
-
-    await expect(async () => {
-      await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required Transferring Physician Name');
-  });
-
-  it('throws error on missing transferring physician phone', async () => {
-    const input: QuestionnaireResponse = {
-      resourceType: 'QuestionnaireResponse',
-      status: 'completed',
-      questionnaire: getReferenceString(questionnaire),
-      item: removeItemsRecursively(requiredAnswerItems, ['transferPhysPhone']),
-    };
-
-    await expect(async () => {
-      await handler(medplum, { bot, input, contentType, secrets: {} });
-    }).rejects.toThrow('Missing required Transferring Physician Phone');
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Missing required Transferring Physician Phone');
+    });
   });
 });

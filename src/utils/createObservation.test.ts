@@ -1,15 +1,15 @@
-import { CodeableConcept, Observation, Patient, QuestionnaireResponse, Reference } from '@medplum/fhirtypes';
+import { CodeableConcept, Observation, Patient, Reference } from '@medplum/fhirtypes';
 import { createObservation } from './createObservation';
-import { createReference, SNOMED, UCUM } from '@medplum/core';
+import { SNOMED, UCUM } from '@medplum/core';
 
 describe('createObservation', () => {
   const patient: Reference<Patient> = { reference: 'Patient/123' };
-  const response: QuestionnaireResponse = { resourceType: 'QuestionnaireResponse', status: 'completed' };
+  const derivedFrom = [{ reference: 'QuestionnaireResponse/456' }];
   const effectiveDateTime = '2024-01-01T00:00:00Z';
   const code: CodeableConcept = { coding: [{ system: 'http://loinc.org', code: '12345-6' }] };
 
   it('returns undefined if no value nor component nor note is defined', () => {
-    const observation = createObservation({ patient, response, effectiveDateTime, code });
+    const observation = createObservation({ patient, derivedFrom, effectiveDateTime, code });
 
     expect(observation).toBeUndefined();
   });
@@ -26,14 +26,14 @@ describe('createObservation', () => {
     };
     const valueQuantity: Observation['valueQuantity'] = { value: 98.6, unit: 'F', system: UCUM, code: '[degF]' };
 
-    const observation = createObservation({ patient, response, effectiveDateTime, category, code, valueQuantity });
+    const observation = createObservation({ patient, derivedFrom, effectiveDateTime, category, code, valueQuantity });
 
     expect(observation).toEqual({
       resourceType: 'Observation',
       status: 'final',
       subject: patient,
       effectiveDateTime,
-      derivedFrom: [createReference(response)],
+      derivedFrom,
       code,
       category: [category],
       valueQuantity,
@@ -43,14 +43,14 @@ describe('createObservation', () => {
   it('returns an Observation with valueQuantity', () => {
     const valueQuantity: Observation['valueQuantity'] = { value: 98.6, unit: 'F', system: UCUM, code: '[degF]' };
 
-    const observation = createObservation({ patient, response, effectiveDateTime, code, valueQuantity });
+    const observation = createObservation({ patient, derivedFrom, effectiveDateTime, code, valueQuantity });
 
     expect(observation).toEqual({
       resourceType: 'Observation',
       status: 'final',
       subject: patient,
       effectiveDateTime,
-      derivedFrom: [createReference(response)],
+      derivedFrom,
       code,
       valueQuantity,
     });
@@ -59,14 +59,14 @@ describe('createObservation', () => {
   it('returns an Observation with valueCodeableConcept', () => {
     const valueCodeableConcept: Observation['valueCodeableConcept'] = { coding: [{ system: SNOMED, code: '123456' }] };
 
-    const observation = createObservation({ patient, response, effectiveDateTime, code, valueCodeableConcept });
+    const observation = createObservation({ patient, derivedFrom, effectiveDateTime, code, valueCodeableConcept });
 
     expect(observation).toEqual({
       resourceType: 'Observation',
       status: 'final',
       subject: patient,
       effectiveDateTime,
-      derivedFrom: [createReference(response)],
+      derivedFrom,
       code,
       valueCodeableConcept,
     });
@@ -80,14 +80,14 @@ describe('createObservation', () => {
       },
     ];
 
-    const observation = createObservation({ patient, response, effectiveDateTime, code, component });
+    const observation = createObservation({ patient, derivedFrom, effectiveDateTime, code, component });
 
     expect(observation).toEqual({
       resourceType: 'Observation',
       status: 'final',
       subject: patient,
       effectiveDateTime,
-      derivedFrom: [createReference(response)],
+      derivedFrom,
       code,
       component,
     });
@@ -96,14 +96,14 @@ describe('createObservation', () => {
   it('returns an Observation with note', () => {
     const note = 'This is a note';
 
-    const observation = createObservation({ patient, response, effectiveDateTime, code, note });
+    const observation = createObservation({ patient, derivedFrom, effectiveDateTime, code, note });
 
     expect(observation).toEqual({
       resourceType: 'Observation',
       status: 'final',
       subject: patient,
       effectiveDateTime,
-      derivedFrom: [createReference(response)],
+      derivedFrom,
       code,
       note: [{ text: note, time: effectiveDateTime }],
     });
@@ -113,14 +113,14 @@ describe('createObservation', () => {
     const valueQuantity: Observation['valueQuantity'] = { value: 98.6, unit: 'F', system: UCUM, code: '[degF]' };
     const hasMember: Observation['hasMember'] = [{ reference: 'Observation/456' }];
 
-    const observation = createObservation({ patient, response, effectiveDateTime, code, valueQuantity, hasMember });
+    const observation = createObservation({ patient, derivedFrom, effectiveDateTime, code, valueQuantity, hasMember });
 
     expect(observation).toEqual({
       resourceType: 'Observation',
       status: 'final',
       subject: patient,
       effectiveDateTime,
-      derivedFrom: [createReference(response)],
+      derivedFrom,
       code,
       valueQuantity,
       hasMember,
@@ -149,7 +149,7 @@ describe('createObservation', () => {
 
     const observation = createObservation({
       patient,
-      response,
+      derivedFrom,
       effectiveDateTime,
       category,
       code,
@@ -164,7 +164,7 @@ describe('createObservation', () => {
       status: 'final',
       subject: patient,
       effectiveDateTime,
-      derivedFrom: [createReference(response)],
+      derivedFrom,
       code,
       category: [category],
       valueQuantity,
