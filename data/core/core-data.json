@@ -476,7 +476,7 @@
                   {
                     "linkId": "weight",
                     "type": "decimal",
-                    "text": "Weight (lb)"
+                    "text": "Weight (kg)"
                   },
                   {
                     "linkId": "vitalSignsComments",
