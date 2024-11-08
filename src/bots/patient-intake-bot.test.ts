@@ -369,9 +369,9 @@ describe('Patient Intake Bot', async () => {
       expect(weightObservation).toHaveLength(1);
       expect(weightObservation[0].valueQuantity).toEqual({
         value: 133,
-        unit: 'lb_av',
+        unit: 'kg',
         system: UCUM,
-        code: '[lb_av]',
+        code: 'kg',
       });
 
       const vitalSignsPanelObservation = await medplum.searchResources('Observation', {

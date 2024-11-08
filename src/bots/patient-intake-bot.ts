@@ -294,9 +294,9 @@ function createVitalSigns(
     code: OBSERVATIONS_CODE_MAP.bodyWeight,
     valueQuantity: {
       value: weight,
-      unit: 'lb_av',
+      unit: 'kg',
       system: UCUM,
-      code: '[lb_av]',
+      code: 'kg',
     },
   });
   const weightObservationEntry = weightObservation ? createBundleEntry(weightObservation) : undefined;
