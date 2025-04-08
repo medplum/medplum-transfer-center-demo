@@ -56,10 +56,13 @@ function ResultCodeCountDisplay(props: ResultCodeCountDisplayProps): JSX.Element
   const [count, setCount] = useState<number>();
 
   useEffect(() => {
+    const { year: currentYear, month: currentMonth } = getMTD();
     medplum
       .search(
         'ServiceRequest',
-        `_has:CommunicationRequest:based-on:_has:Communication:based-on:_tag=${HAYS_CALL_RESULT_SYSTEM_STR}|${props.code}&_summary=count`
+        `authored=ge${currentYear}-${currentMonth}-01` +
+          `&_has:CommunicationRequest:based-on:_has:Communication:based-on:_tag=${HAYS_CALL_RESULT_SYSTEM_STR}|${props.code}` +
+          `&_summary=count`
       )
       .then((bundle: Bundle) => {
         setCount(bundle.total);
@@ -72,6 +75,23 @@ function ResultCodeCountDisplay(props: ResultCodeCountDisplayProps): JSX.Element
   }
 
   return <p>{count}</p>;
+}
+
+function getMTD(): {
+  year: number;
+  month: string;
+  monthName: string;
+} {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are 0-based, so add 1
+  const currentMonthName = currentDate.toLocaleString('default', { month: 'long' });
+
+  return {
+    year: currentYear,
+    month: currentMonth,
+    monthName: currentMonthName,
+  };
 }
 
 function getCodeDisplayString(code: ResultCode): string {
@@ -139,6 +159,8 @@ export function DashboardPage(): JSX.Element {
     [navigate]
   );
 
+  const { year, monthName: currentMonthName } = getMTD();
+
   return (
     <Container fluid>
       <Stack gap="lg" mt={15}>
@@ -148,7 +170,9 @@ export function DashboardPage(): JSX.Element {
         </Paper>
         <Paper {...PAPER_PROPS}>
           <Stack>
-            <Title>Transfer Resolutions - MTD (September 2024)</Title>
+            <Title>
+              Transfer Resolutions - MTD ({currentMonthName} {year})
+            </Title>
             <Table>
               <Table.Tbody>
                 <Table.Tr>

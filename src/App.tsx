@@ -1,7 +1,6 @@
 import { ErrorBoundary, Loading, useMedplum, useMedplumProfile } from '@medplum/react';
 import { Suspense } from 'react';
-import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
-
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AssignToRoomPage } from '@/pages/AssignToRoomPage';
 import { CreateLocationPage } from '@/pages/CreateLocationPage';
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -19,7 +18,6 @@ import { SignInPage } from '@/pages/SignInPage';
 import { SignOutPage } from '@/pages/SignOutPage';
 import { SupplementaryQuestionnairePage } from '@/pages/SupplementaryQuestionnairePage';
 import { TransferPage } from '@/pages/TransferPage';
-import { UnitesPage } from '@/pages/UnitsPage';
 import { ViewQuestionnairePage } from '@/pages/ViewQuestionnairePage';
 
 function App(): JSX.Element | null {
@@ -30,55 +28,38 @@ function App(): JSX.Element | null {
     return null;
   }
 
-  const router = createBrowserRouter([
-    {
-      path: '/',
-      element: profile ? <Root /> : <Navigate to="/signin" replace />,
-      children: [
-        { index: true, element: <Navigate to="/dashboard" /> },
-        {
-          path: 'dashboard',
-          element: <DashboardPage />,
-          children: [{ path: 'ServiceRequest/:id', element: <AssignToRoomPage /> }],
-        },
-        { path: 'transfers', element: <TransferPage /> },
-        { path: 'new-patient', element: <NewPatientPage /> },
-        { path: 'new-physician', element: <NewPhysicianPage /> },
-        // { path: 'laboratory', element: <LaboratoryPage /> },
-        // { path: 'radiology', element: <RadiologyPage /> },
-        { path: 'units', element: <UnitesPage /> },
-        // { path: 'notifications', element: <NotificationsPage /> },
-        // { path: 'settings', element: <SettingsPage /> },
-        { path: '/Location', element: <LocationsPage /> },
-        { path: '/Location/new', element: <CreateLocationPage /> },
-        { path: '/Location/:id/new', element: <CreateLocationPage /> },
-        { path: '/Location/:id/edit', element: <EditLocationPage /> },
-        { path: '/Location/:id/rooms', element: <LocationsPage /> },
-        {
-          path: 'physicians',
-          element: <PhysiciansPage />,
-          children: [
-            { path: 'Practitioner/:id/edit', element: <EditPractitionerPage /> },
-            { path: 'Practitioner/:id/questionnaire', element: <ViewQuestionnairePage /> },
-          ],
-        },
-        { path: '/QuestionnaireResponse/:id', element: <QuestionnaireResponsePage /> },
-        { path: '/:resourceType/:id/*', element: <ResourcePage /> },
-        { path: '/ServiceRequest/:id/accepting-physician', element: <SupplementaryQuestionnairePage /> },
-        { path: '/ServiceRequest/:id/physician-supplement', element: <SupplementaryQuestionnairePage /> },
-        { path: '/ServiceRequest/:id/*', element: <ServiceRequestPage /> },
-        { path: '/:resourceType/:id', element: <ResourcePage /> },
-        { path: '/:resourceType/:id/_history/:versionId', element: <ResourcePage /> },
-      ],
-    },
-    { path: '/signin', element: <SignInPage /> },
-    { path: '/signout', element: <SignOutPage /> },
-  ]);
-
   return (
     <ErrorBoundary>
       <Suspense fallback={<Loading />}>
-        <RouterProvider router={router} />
+        <Routes>
+          <Route path="/" element={profile ? <Root /> : <Navigate to="/signin" replace />}>
+            <Route index element={<Navigate to="/dashboard" />} />
+            <Route path="dashboard" element={<DashboardPage />}>
+              <Route path="ServiceRequest/:id" element={<AssignToRoomPage />} />
+            </Route>
+            <Route path="transfers" element={<TransferPage />} />
+            <Route path="transfers/new" element={<NewPatientPage />} />
+            <Route path="Location" element={<LocationsPage />} />
+            <Route path="Location/new" element={<CreateLocationPage />} />
+            <Route path="Location/:id/new" element={<CreateLocationPage />} />
+            <Route path="Location/:id/edit" element={<EditLocationPage />} />
+            <Route path="Location/:id/rooms" element={<LocationsPage />} />
+            <Route path="physicians" element={<PhysiciansPage />} />
+            <Route path="physicians/new" element={<NewPhysicianPage />} />
+            <Route path="Practitioner/:id/edit" element={<EditPractitionerPage />} />
+            <Route path="Practitioner/:id/questionnaire" element={<ViewQuestionnairePage />} />
+            <Route path="QuestionnaireResponse/:id" element={<QuestionnaireResponsePage />} />
+            <Route path=":resourceType/:id/*" element={<ResourcePage />} />
+            <Route path="ServiceRequest/:id/accepting-physician" element={<SupplementaryQuestionnairePage />} />
+            <Route path="ServiceRequest/:id/physician-supplement" element={<SupplementaryQuestionnairePage />} />
+            <Route path="ServiceRequest/:id/*" element={<ServiceRequestPage />} />
+            <Route path=":resourceType/:id" element={<ResourcePage />} />
+            <Route path=":resourceType/:id/_history/:versionId" element={<ResourcePage />} />
+          </Route>
+
+          <Route path="/signin" element={<SignInPage />} />
+          <Route path="/signout" element={<SignOutPage />} />
+        </Routes>
       </Suspense>
     </ErrorBoundary>
   );

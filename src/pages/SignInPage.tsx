@@ -13,7 +13,7 @@ export function SignInPage(): JSX.Element {
       onSuccess={() => navigate('/')}
     >
       <Logo size={32} />
-      <Title>Sign in to Haysmed Regional Portal </Title>
+      <Title>Sign in to HaysMed Regional Portal </Title>
     </SignInForm>
   );
 }

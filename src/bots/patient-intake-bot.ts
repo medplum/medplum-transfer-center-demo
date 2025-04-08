@@ -168,7 +168,7 @@ function createVitalSigns(
 ): void {
   const heartRate = answers['heartRate']?.valueInteger;
   if (heartRate !== undefined && heartRate < 0) {
-    throw new Error('Invalid Heart Rate');
+    throw new Error(`Invalid Heart Rate. Received: ${heartRate}`);
   }
   const heartRateObservation = createObservation({
     patient: patientReference,

@@ -99,7 +99,7 @@ export function TransferPage(): JSX.Element {
   return (
     <Container fluid>
       <Title>Transfers</Title>
-      <Button my={15} onClick={() => navigate('/new-patient')}>
+      <Button my={15} onClick={() => navigate('/transfers/new')}>
         New
       </Button>
       <FhirPathTable resourceType="ServiceRequest" query={serviceReqQuery} fields={fields} />

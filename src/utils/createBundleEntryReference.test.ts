@@ -11,7 +11,7 @@ describe('createBundleEntry', () => {
         url: 'Patient',
         method: 'POST',
       },
-      resource: { resourceType: 'Patient' },
+      resource: { resourceType: 'Patient', name: [{ family: 'Doe', given: ['John'] }] },
     };
     const reference = createBundleEntryReference(bundleEntry);
 

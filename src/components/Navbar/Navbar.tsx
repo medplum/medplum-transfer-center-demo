@@ -14,16 +14,11 @@ interface MenuItem {
 const menu: MenuItem[] = [
   { link: '/dashboard', label: 'Dashboard', icon: IconDashboard },
   { link: '/transfers', label: 'Transfer Center', icon: IconAmbulance },
-  // { link: '/laboratory', label: 'Laboratory', icon: IconMicroscope },
-  // { link: '/radiology', label: 'Radiology', icon: IconRadioactive },
-  // { link: '/notifications', label: 'Notifications', icon: IconBellRinging },
 ];
 
 const adminMenu: MenuItem[] = [
   { link: '/physicians', label: 'Physicians', icon: IconStethoscope },
   { link: '/Location', label: 'Locations', icon: IconHospital },
-  // { link: '/units', label: 'Units', icon: IconBuildingHospital },
-  // { link: '/settings', label: 'Settings', icon: IconSettings },
 ];
 
 const logoutMenu: MenuItem = { link: '/signout', label: 'Logout', icon: IconLogout };
@@ -57,7 +52,7 @@ export default function Navbar() {
     <Stack>
       <Group justify="space-between">
         <Text>Transfer Center</Text>
-        <Code fw={700}>v1.0.1</Code>
+        <Code fw={700}>Alpha (v1.0.1)</Code>
       </Group>
       {links}
       <Divider />

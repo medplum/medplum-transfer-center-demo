@@ -59,7 +59,7 @@ export function PhysiciansPage(): JSX.Element {
   return (
     <Container fluid>
       <Title>Physicians</Title>
-      <Button my={15} onClick={() => navigate('/new-physician')}>
+      <Button my={15} onClick={() => navigate('/physicians/new')}>
         New
       </Button>
       <FhirPathTable searchType="graphql" resourceType="Practitioner" query={query} fields={fields} />

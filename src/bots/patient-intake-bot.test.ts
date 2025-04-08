@@ -1,5 +1,12 @@
 import { createReference, generateId, getReferenceString, ICD10, LOINC, SNOMED, UCUM } from '@medplum/core';
-import { Patient, Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
+import {
+  Patient,
+  Practitioner,
+  PractitionerRole,
+  Questionnaire,
+  QuestionnaireResponse,
+  QuestionnaireResponseItem,
+} from '@medplum/fhirtypes';
 import { MockClient } from '@medplum/mock';
 import { PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/constants';
 import { handler } from './patient-intake-bot';
@@ -80,7 +87,7 @@ describe('Patient Intake Bot', async () => {
     });
   });
 
-  function createInput(items: QuestionnaireResponseItem[]): QuestionnaireResponse {
+  function createInput(items: QuestionnaireResponseItem[] = []): QuestionnaireResponse {
     return {
       resourceType: 'QuestionnaireResponse',
       status: 'completed',
@@ -161,20 +168,23 @@ describe('Patient Intake Bot', async () => {
 
       const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
       expect(patient).toBeDefined();
-      expect(patient.name).toEqual([{ family: 'Simpson', given: ['Marge'] }]);
-      expect(patient.birthDate).toEqual('1958-03-19');
-      expect(patient.telecom).toEqual([{ system: 'phone', value: '123-456-7890' }]);
-      expect(patient.address).toEqual([
-        {
-          use: 'home',
-          type: 'physical',
-          line: ['123 Main St'],
-          city: 'Sunnyvale',
-          state: 'CA',
-          postalCode: '95008',
-        },
-      ]);
+      expect(patient).toMatchObject({
+        name: [{ family: 'Simpson', given: ['Marge'] }],
+        birthDate: '1958-03-19',
+        telecom: [{ system: 'phone', value: '123-456-7890' }],
+        address: [
+          {
+            use: 'home',
+            type: 'physical',
+            line: ['123 Main St'],
+            city: 'Sunnyvale',
+            state: 'CA',
+            postalCode: '95008',
+          },
+        ],
+      });
     });
+
     it('throws error on missing requisitionId', async () => {
       const input: QuestionnaireResponse = {
         resourceType: 'QuestionnaireResponse',
@@ -409,6 +419,24 @@ describe('Patient Intake Bot', async () => {
       expect(vitalSignsPanelObservation).toHaveLength(0);
     });
 
+    it('throws error on negative heart rate', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'vitalSigns',
+          item: [
+            {
+              linkId: 'heartRate',
+              answer: [{ valueInteger: -10 }],
+            },
+          ],
+        },
+      ]);
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Invalid Heart Rate. Received: -10');
+    });
+
     it('throws error on negative diastolic blood pressure', async () => {
       const input: QuestionnaireResponse = createInput([
         {
@@ -610,6 +638,169 @@ describe('Patient Intake Bot', async () => {
   });
 
   describe('Transfer Info', async () => {
+    it('successfully creates transferring physician resources', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'transferInfo',
+          item: [
+            {
+              linkId: 'transferFacility',
+              answer: [
+                {
+                  valueReference: {
+                    reference: 'Organization/222',
+                    display: 'Acme Hospital',
+                  },
+                },
+              ],
+            },
+            {
+              linkId: 'transferPhys',
+              item: [
+                {
+                  linkId: 'transferPhysFirst',
+                  answer: [{ valueString: 'Marie' }],
+                },
+                {
+                  linkId: 'transferPhysLast',
+                  answer: [{ valueString: 'Anne' }],
+                },
+                {
+                  linkId: 'transferPhysQual',
+                  answer: [{ valueString: 'MD' }],
+                },
+                {
+                  linkId: 'transferPhysPhone',
+                  answer: [{ valueString: '111-222-4444' }],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+
+      // Patient
+      const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
+      expect(patient).toBeDefined();
+
+      // Transferring Physician
+      const transferPhysician = (await medplum.searchOne('Practitioner', 'name=Marie')) as Practitioner;
+      expect(transferPhysician).toBeDefined();
+      expect(transferPhysician).toMatchObject({
+        name: [{ family: 'Anne', given: ['Marie'], suffix: ['MD'] }],
+        telecom: [{ system: 'phone', value: '111-222-4444' }],
+      });
+
+      const transferPhysicianPractitionerRole = (await medplum.searchOne('PractitionerRole', {
+        practitioner: getReferenceString(transferPhysician),
+      })) as PractitionerRole;
+      expect(transferPhysicianPractitionerRole).toBeDefined();
+      expect(transferPhysicianPractitionerRole.organization).toEqual({
+        reference: 'Organization/222',
+        display: 'Acme Hospital',
+      });
+    });
+
+    it('successfully creates transfer request resources', async () => {
+      const input: QuestionnaireResponse = createInput();
+
+      const requisitionId = input.item?.find((item) => item.linkId === 'requisitionId')?.answer?.[0].valueString;
+
+      await handler(medplum, { bot, input, contentType, secrets: {} });
+
+      // Patient
+      const patient = (await medplum.searchOne('Patient', 'name=Marge')) as Patient;
+      expect(patient).toBeDefined();
+
+      // Transferring Physician
+      const transferPhysician = (await medplum.searchOne('Practitioner', 'name=Marie')) as Practitioner;
+      expect(transferPhysician).toBeDefined();
+
+      // ServiceRequest
+      const serviceRequest = await medplum.searchResources('ServiceRequest', {
+        subject: getReferenceString(patient),
+      });
+      expect(serviceRequest).toHaveLength(1);
+      expect(serviceRequest[0]).toMatchObject({
+        status: 'active',
+        intent: 'proposal',
+        code: {
+          coding: [{ system: SNOMED, code: '19712007', display: 'Patient transfer (procedure)' }],
+          text: 'Patient transfer',
+        },
+        requester: createReference(transferPhysician),
+        supportingInfo: [{ ...createReference(input), display: 'Patient Intake Form' }],
+        requisition: {
+          system: 'https://haysmed.com/fhir/requisition-id',
+          value: requisitionId,
+        },
+        authoredOn: expect.any(String),
+      });
+
+      // CommunicationRequest
+      const communicationRequest = await medplum.searchResources('CommunicationRequest', {
+        'based-on': getReferenceString(serviceRequest[0]),
+      });
+      expect(communicationRequest).toHaveLength(1);
+      const transferPhysicianPhone = transferPhysician.telecom?.find((val) => val.system === 'phone')?.value;
+      expect(communicationRequest[0]).toMatchObject({
+        status: 'active',
+        payload: [{ contentString: transferPhysicianPhone }],
+      });
+
+      // Task
+      const task = await medplum.searchResources('Task', {
+        'based-on': getReferenceString(serviceRequest[0]),
+        focus: getReferenceString(communicationRequest[0]),
+      });
+      expect(task).toHaveLength(1);
+      expect(task[0]).toMatchObject({
+        status: 'ready',
+        priority: 'asap',
+        intent: 'plan',
+        code: {
+          coding: [{ system: 'http://hl7.org/fhir/CodeSystem/task-code', code: 'fulfill' }],
+        },
+        input: [
+          {
+            type: { coding: [{ code: 'comm_req', display: 'Communication request' }] },
+            valueReference: { reference: getReferenceString(communicationRequest[0]) },
+          },
+          {
+            type: { coding: [{ code: 'subject_patient', display: 'Patient' }] },
+            valueReference: createReference(patient),
+          },
+        ],
+      });
+    });
+
+    it('throws error on invalid transferring facility', async () => {
+      const input: QuestionnaireResponse = createInput([
+        {
+          linkId: 'transferInfo',
+          item: [
+            {
+              linkId: 'transferFacility',
+              answer: [
+                {
+                  valueReference: {
+                    reference: 'Location/123',
+                    display: 'Acme Hospital',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      await expect(async () => {
+        await handler(medplum, { bot, input, contentType, secrets: {} });
+      }).rejects.toThrow('Transferring facility is not a valid reference to an Organization');
+    });
+
     it('throws error on missing transferring physician name', async () => {
       const input: QuestionnaireResponse = {
         resourceType: 'QuestionnaireResponse',

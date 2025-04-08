@@ -7,7 +7,8 @@ import { MedplumProvider } from '@medplum/react';
 import '@medplum/react/styles.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from '@/App.tsx';
+import { BrowserRouter } from 'react-router-dom';
+import App from '@/App';
 
 const medplum = new MedplumClient({
   onUnauthenticated: () => (window.location.href = '/'),
@@ -37,13 +38,15 @@ const container = document.getElementById('root') as HTMLDivElement;
 const root = createRoot(container);
 root.render(
   <StrictMode>
-    <MedplumProvider medplum={medplum}>
-      <MantineProvider theme={theme}>
-        <ModalsProvider>
-          <App />
-          <Notifications />
-        </ModalsProvider>
-      </MantineProvider>
-    </MedplumProvider>
+    <BrowserRouter>
+      <MedplumProvider medplum={medplum}>
+        <MantineProvider theme={theme}>
+          <ModalsProvider>
+            <App />
+            <Notifications />
+          </ModalsProvider>
+        </MantineProvider>
+      </MedplumProvider>
+    </BrowserRouter>
   </StrictMode>
 );

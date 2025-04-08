@@ -6,9 +6,9 @@ import { BundleEntry, Reference, Resource } from '@medplum/fhirtypes';
  * @param entry The BundleEntry to reference.
  * @returns A Reference to the BundleEntry.
  */
-export function createBundleEntryReference(entry: BundleEntry): Reference<Resource> | undefined {
-  return {
-    display: entry.resource ? getDisplayString(entry.resource) : undefined,
-    reference: entry.fullUrl,
-  };
+export function createBundleEntryReference(entry: BundleEntry): Reference<Resource> {
+  const displayString = entry.resource ? getDisplayString(entry.resource) : undefined;
+  const display = displayString?.includes('undefined') ? undefined : displayString;
+  const reference = entry.fullUrl;
+  return !display || display === reference ? { reference } : { reference, display };
 }
