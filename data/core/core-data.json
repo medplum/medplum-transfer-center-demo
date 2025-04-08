@@ -827,12 +827,12 @@
       "fullUrl": "urn:uuid:a59969cf-bf41-4093-9027-d16ab27a2070",
       "request": {
         "method": "PUT",
-        "url": "Questionnaire?name=patient-bed-assignment"
+        "url": "Questionnaire?name=patient-bed-assignment-questionnaire"
       },
       "resource": {
         "resourceType": "Questionnaire",
         "status": "active",
-        "name": "patient-bed-assignment",
+        "name": "patient-bed-assignment-questionnaire",
         "title": "Patient Bed Assignment",
         "item": [
           {

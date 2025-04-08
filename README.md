@@ -98,6 +98,30 @@ The core data for the HaysMed Regional Portal is stored in the `data/core` direc
 | Questionnaire | accepting-physician-intake-questionnaire |
 | Questionnaire | create-location-lvl-questionnaire        |
 | Questionnaire | create-location-ro-questionnaire         |
-| Questionnaire | patient-bed-assignment                   |
+| Questionnaire | patient-bed-assignment-questionnaire     |
 | Questionnaire | patient-intake-questionnaire             |
 | Questionnaire | physician-onboarding-questionnaire       |
+
+## Bots
+
+The bots in this project are used to automate the creation of resources in the Medplum server.
+
+Before running any of the bot commands, make sure to set the environment variables in the `.env` file.
+
+```bash
+cp .env.example .env
+```
+
+To build the bots, run:
+
+```bash
+npm run bots:build
+```
+
+To deploy the bots, run:
+
+```bash
+npm run bots:deploy
+```
+
+When creating a new bot, make sure to add it to the `BOTS` array in the `scripts/deploy-bots.ts` file.

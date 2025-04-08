@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "clean": "rimraf dist",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix src",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
+    "bots:build": "npm run clean && npm run lint && tsc && node --no-warnings esbuild-script.mjs",
+    "bots:deploy": "node --loader ts-node/esm scripts/deploy-bots.ts",
     "send-adt": "tsx scripts/send-adt-to-agent.cts 0.0.0.0:56000",
     "hl7-server": "tsx scripts/hl7-server.cts"
   },
@@ -45,6 +48,7 @@
     "uuid": "^11.0.2"
   },
   "devDependencies": {
+    "@medplum/bot-layer": "3.2.17",
     "@medplum/cli": "3.2.17",
     "@medplum/hl7": "3.2.17",
     "@medplum/mock": "3.2.17",
@@ -54,11 +58,14 @@
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "4.3.3",
+    "esbuild": "0.24.0",
     "eslint": "8.57.1",
     "eslint-plugin-react-hooks": "4.6.2",
     "eslint-plugin-react-refresh": "0.4.13",
     "jsdom": "25.0.1",
     "prettier": "^3.3.3",
+    "rimraf": "5.0.9",
+    "ts-node": "10.9.2",
     "tsx": "4.19.1",
     "typescript": "5.6.3",
     "vite": "5.4.10",

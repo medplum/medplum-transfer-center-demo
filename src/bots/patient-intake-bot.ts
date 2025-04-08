@@ -390,7 +390,7 @@ function createTransferringPhysician(
 } {
   const transferFacility = answers['transferFacility']?.valueReference;
   if (!transferFacility?.reference?.startsWith('Organization')) {
-    throw new Error('Transferring origin is not a valid reference to an Organization');
+    throw new Error('Transferring facility is not a valid reference to an Organization');
   }
 
   const transferPhysician: Practitioner = { resourceType: 'Practitioner' };
