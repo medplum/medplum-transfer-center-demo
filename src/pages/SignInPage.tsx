@@ -9,7 +9,7 @@ export function SignInPage(): JSX.Element {
   return (
     <SignInForm
       projectId={MEDPLUM_PROJECT_ID}
-      googleClientId={MEDPLUM_GOOGLE_CLIENT_ID}
+      googleClientId={MEDPLUM_GOOGLE_CLIENT_ID || undefined}
       onSuccess={() => navigate('/')}
     >
       <Logo size={32} />
