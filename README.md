@@ -15,15 +15,12 @@ The Medplum Transfer Center is a **hospital transfer center demo app**. It provi
 
 ### Features
 
-- Open-source
-- [Medplum](https://www.medplum.com) backend, which is also open source
 - Transfer center dashboard for managing incoming patient transfers
 - Patient intake workflow via FHIR Questionnaires
 - Physician onboarding for accepting transfer requests
 - Hospital location management (buildings, wards, rooms)
 - Real-time HL7 ADT message processing via Medplum Agent
 - Automated bed assignment workflows
-- All data represented in [FHIR](https://hl7.org/FHIR/)
 
 ## Repo Overview
 
@@ -112,7 +109,7 @@ Then, run the app:
 npm run dev
 ```
 
-This app should run on `http://localhost:3000/`
+This will host the Vite development server locally, which by default should be hosted on `http://localhost:3000/`
 
 ## Building for Production
 
