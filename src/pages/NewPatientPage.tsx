@@ -1,17 +1,28 @@
-import { Container } from '@mantine/core';
+import { Alert, Container, Loader } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { generateId, normalizeErrorString, sleep } from '@medplum/core';
-import { QuestionnaireResponse, QuestionnaireResponseItem, ServiceRequest } from '@medplum/fhirtypes';
+import { Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem, ServiceRequest } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum, useMedplumNavigate } from '@medplum/react';
 import { IconCircleOff } from '@tabler/icons-react';
-import { useCallback } from 'react';
-import { SAMPLE_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_ID } from '@/constants';
+import { useCallback, useEffect, useState } from 'react';
+import { SAMPLE_MED_REQUISITION_SYSTEM, PATIENT_INTAKE_QUESTIONNAIRE_NAME } from '@/constants';
+import { getQuestionnaireByName } from '@/utils';
 
 const MAX_SEARCH_RETRIES = 3;
 
 export function NewPatientPage(): JSX.Element {
   const medplum = useMedplum();
   const navigate = useMedplumNavigate();
+  const [questionnaire, setQuestionnaire] = useState<Questionnaire>();
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    getQuestionnaireByName(medplum, PATIENT_INTAKE_QUESTIONNAIRE_NAME)
+      .then(setQuestionnaire)
+      .catch((err) => {
+        setError(normalizeErrorString(err));
+      });
+  }, [medplum]);
 
   const handleSubmit = useCallback(
     (response: QuestionnaireResponse) => {
@@ -73,12 +84,27 @@ export function NewPatientPage(): JSX.Element {
     [medplum, navigate]
   );
 
+  if (error) {
+    return (
+      <Container fluid>
+        <Alert color="red" title="Error loading questionnaire">
+          {error}
+        </Alert>
+      </Container>
+    );
+  }
+
+  if (!questionnaire) {
+    return (
+      <Container fluid>
+        <Loader />
+      </Container>
+    );
+  }
+
   return (
     <Container fluid>
-      <QuestionnaireForm
-        questionnaire={{ reference: `Questionnaire/${PATIENT_INTAKE_QUESTIONNAIRE_ID}` }}
-        onSubmit={handleSubmit}
-      />
+      <QuestionnaireForm questionnaire={questionnaire} onSubmit={handleSubmit} />
     </Container>
   );
 }

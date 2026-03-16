@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Container, Group, Text, Title } from '@mantine/core';
-import { modals } from '@mantine/modals';
-import { PropertyType } from '@medplum/core';
-import { useMedplum } from '@medplum/react';
 import { FhirPathTable, FhirPathTableField } from '@/components/FhirPathTable/FhirPathTable';
-import { SAMPLE_MED_LOCATION_ID } from '@/constants';
+import { SAMPLE_MED_LOCATION_NAME } from '@/constants';
+import { Alert, Button, Container, Group, Loader, Text, Title } from '@mantine/core';
+import { modals } from '@mantine/modals';
+import { normalizeErrorString, PropertyType } from '@medplum/core';
+import { Location } from '@medplum/fhirtypes';
+import { useMedplum } from '@medplum/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export function LocationsPage(): JSX.Element {
   const navigate = useNavigate();
@@ -13,6 +14,24 @@ export function LocationsPage(): JSX.Element {
   // This is used to force a refresh of the FhirPathTable component
   const [refresh, setRefresh] = useState(false);
   const medplum = useMedplum();
+  const [rootLocation, setRootLocation] = useState<Location>();
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    if (!id) {
+      medplum
+        .searchOne('Location', { name: SAMPLE_MED_LOCATION_NAME })
+        .then((location) => {
+          if (!location) {
+            throw new Error(`Location "${SAMPLE_MED_LOCATION_NAME}" not found`);
+          }
+          setRootLocation(location);
+        })
+        .catch((err) => {
+          setError(normalizeErrorString(err));
+        });
+    }
+  }, [id, medplum]);
 
   const openDeleteConfirmationModal = useCallback(
     (locationId: string): void => {
@@ -107,8 +126,10 @@ export function LocationsPage(): JSX.Element {
         }
       }`;
     }
+    if (!rootLocation?.id) return '';
+
     return `{
-      ResourceList: LocationList(partof: "Location/${SAMPLE_MED_LOCATION_ID}", physical_type: "lvl", _sort: "name", _count: 40) {
+      ResourceList: LocationList(partof: "Location/${rootLocation.id}", physical_type: "lvl", _sort: "name", _count: 40) {
         id
         name
         telecom(system: "phone") {
@@ -117,10 +138,28 @@ export function LocationsPage(): JSX.Element {
         }
       }
     }`;
-  }, [id]);
+  }, [id, rootLocation]);
 
   function handleNewClick() {
     navigate(id ? `/Location/${id}/new` : '/Location/new');
+  }
+
+  if (error) {
+    return (
+      <Container fluid>
+        <Alert color="red" title="Error loading location">
+          {error}
+        </Alert>
+      </Container>
+    );
+  }
+
+  if (!id && !rootLocation) {
+    return (
+      <Container fluid>
+        <Loader />
+      </Container>
+    );
   }
 
   return (

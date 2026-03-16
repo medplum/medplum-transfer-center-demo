@@ -1,9 +1,11 @@
-import { Modal } from '@mantine/core';
-import { QuestionnaireResponse } from '@medplum/fhirtypes';
+import { QUESTIONNAIRE_ASSIGNMENT_QUESTIONNAIRE_NAME } from '@/constants';
+import { getQuestionnaireByName } from '@/utils';
+import { Alert, Loader, Modal } from '@mantine/core';
+import { normalizeErrorString } from '@medplum/core';
+import { Questionnaire, QuestionnaireResponse } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum } from '@medplum/react';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { QUESTIONNAIRE_ASSIGNMENT_QUESTIONNAIRE_ID } from '@/constants';
 
 interface AssignQuestionnaireModalProps {
   readonly opened: boolean;
@@ -14,8 +16,17 @@ export function AssignQuestionnaireModal(props: AssignQuestionnaireModalProps): 
   const { id } = useParams();
   const medplum = useMedplum();
   const navigate = useNavigate();
+  const [questionnaire, setQuestionnaire] = useState<Questionnaire>();
+  const [error, setError] = useState<string>();
 
-  // const defaultResource = { resourceType } as Resource;
+  useEffect(() => {
+    getQuestionnaireByName(medplum, QUESTIONNAIRE_ASSIGNMENT_QUESTIONNAIRE_NAME)
+      .then(setQuestionnaire)
+      .catch((err) => {
+        setError(normalizeErrorString(err));
+      });
+  }, [medplum]);
+
   const handleSubmit = useCallback(
     (response: QuestionnaireResponse) => {
       medplum
@@ -28,11 +39,19 @@ export function AssignQuestionnaireModal(props: AssignQuestionnaireModalProps): 
 
   return (
     <Modal size="lg" opened={props.opened} onClose={props.onClose}>
-      <QuestionnaireForm
-        questionnaire={{ reference: `Questionnaire/${QUESTIONNAIRE_ASSIGNMENT_QUESTIONNAIRE_ID}` }}
-        subject={{ reference: `Practitioner/${id}` }}
-        onSubmit={handleSubmit}
-      />
+      {error ? (
+        <Alert color="red" title="Error loading questionnaire">
+          {error}
+        </Alert>
+      ) : !questionnaire ? (
+        <Loader />
+      ) : (
+        <QuestionnaireForm
+          questionnaire={questionnaire}
+          subject={{ reference: `Practitioner/${id}` }}
+          onSubmit={handleSubmit}
+        />
+      )}
     </Modal>
   );
 }

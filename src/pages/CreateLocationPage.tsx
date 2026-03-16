@@ -1,15 +1,28 @@
-import { Container } from '@mantine/core';
-import { createReference } from '@medplum/core';
-import { Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem, Reference } from '@medplum/fhirtypes';
+import { CREATE_LOCATION_LVL_QUESTIONNAIRE_NAME, CREATE_LOCATION_ROOM_QUESTIONNAIRE_NAME } from '@/constants';
+import { getQuestionnaireByName } from '@/utils';
+import { Alert, Container, Loader } from '@mantine/core';
+import { createReference, normalizeErrorString } from '@medplum/core';
+import { Questionnaire, QuestionnaireResponse, QuestionnaireResponseItem } from '@medplum/fhirtypes';
 import { QuestionnaireForm, useMedplum, useMedplumNavigate } from '@medplum/react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { CREATE_LOCATION_ROOM_QUESTIONNAIRE_ID, CREATE_LOCATION_LVL_QUESTIONNAIRE_ID } from '@/constants';
 
 export function CreateLocationPage(): JSX.Element {
   const navigate = useMedplumNavigate();
   const { id } = useParams();
   const medplum = useMedplum();
+  const [questionnaire, setQuestionnaire] = useState<Questionnaire>();
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    const questionnaireName = id ? CREATE_LOCATION_ROOM_QUESTIONNAIRE_NAME : CREATE_LOCATION_LVL_QUESTIONNAIRE_NAME;
+
+    getQuestionnaireByName(medplum, questionnaireName)
+      .then(setQuestionnaire)
+      .catch((err) => {
+        setError(normalizeErrorString(err));
+      });
+  }, [id, medplum]);
 
   const handleSubmit = useCallback(
     (response: QuestionnaireResponse) => {
@@ -32,14 +45,23 @@ export function CreateLocationPage(): JSX.Element {
     [id, medplum, navigate]
   );
 
-  const questionnaire: Reference<Questionnaire> = useMemo(
-    () => ({
-      reference: id
-        ? `Questionnaire/${CREATE_LOCATION_ROOM_QUESTIONNAIRE_ID}`
-        : `Questionnaire/${CREATE_LOCATION_LVL_QUESTIONNAIRE_ID}`,
-    }),
-    [id]
-  );
+  if (error) {
+    return (
+      <Container fluid>
+        <Alert color="red" title="Error loading questionnaire">
+          {error}
+        </Alert>
+      </Container>
+    );
+  }
+
+  if (!questionnaire) {
+    return (
+      <Container fluid>
+        <Loader />
+      </Container>
+    );
+  }
 
   return (
     <Container fluid>
