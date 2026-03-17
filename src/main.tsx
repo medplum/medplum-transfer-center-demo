@@ -11,7 +11,7 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 
 const medplum = new MedplumClient({
-  onUnauthenticated: () => (window.location.href = '/'),
+  onUnauthenticated: () => (window.location.href = '/medplum-transfer-center-demo/'),
   // baseUrl: 'http://localhost:8103/', //Uncomment this to run against the server on your localhost; also change `googleClientId` in `./pages/SignInPage.tsx`
 });
 
