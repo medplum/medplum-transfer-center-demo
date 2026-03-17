@@ -94,14 +94,26 @@ Copy the example environment file and fill in your Medplum project credentials:
 cp .env.example .env
 ```
 
-| Variable                        | Description                                        |
-| ------------------------------- | -------------------------------------------------- |
-| `VITE_MEDPLUM_PROJECT_ID`       | Your Medplum project ID (used by the frontend)     |
-| `VITE_MEDPLUM_GOOGLE_CLIENT_ID` | Google OAuth client ID for login (optional)        |
-| `MEDPLUM_CLIENT_ID`             | Medplum client ID for bot deployment scripts       |
-| `MEDPLUM_CLIENT_SECRET`         | Medplum client secret for bot deployment scripts   |
-| `DEPLOY_MEDPLUM_CLIENT_ID`      | Medplum client ID used during CI/CD deployment     |
-| `DEPLOY_MEDPLUM_CLIENT_SECRET`  | Medplum client secret used during CI/CD deployment |
+**Web app** (`VITE_` prefix — bundled into the frontend at build time):
+
+| Variable                        | Description                                 |
+| ------------------------------- | ------------------------------------------- |
+| `VITE_MEDPLUM_PROJECT_ID`       | Medplum project ID                          |
+| `VITE_MEDPLUM_GOOGLE_CLIENT_ID` | Google OAuth client ID for login (optional) |
+
+**Bot scripts** (used by `npm run bots:build` / `bots:deploy`):
+
+| Variable                | Description                        |
+| ----------------------- | ---------------------------------- |
+| `MEDPLUM_CLIENT_ID`     | Medplum client ID for bot scripts  |
+| `MEDPLUM_CLIENT_SECRET` | Medplum client secret for bot scripts |
+
+**CI/CD** (used during automated deployment):
+
+| Variable                       | Description                             |
+| ------------------------------ | --------------------------------------- |
+| `DEPLOY_MEDPLUM_CLIENT_ID`     | Medplum client ID for CI/CD deployment  |
+| `DEPLOY_MEDPLUM_CLIENT_SECRET` | Medplum client secret for CI/CD deployment |
 
 Then, run the app:
 
@@ -167,6 +179,20 @@ To build and deploy the bots:
 npm run bots:build
 npm run bots:deploy
 ```
+
+### Creating the Agent and Endpoint
+
+After deploying the bots, you need to create the Medplum Agent and Endpoint resources to enable HL7 message processing:
+
+1. Update `data/core/agent-data.json` with your ADT processing bot ID, replacing `${YOUR_ADT_PROCESSING_BOT_ID}` with the actual Bot ID.
+
+2. Upload the agent configuration:
+
+```bash
+npx medplum post '' "$(cat data/core/agent-data.json)"
+```
+
+This creates an **Endpoint** (HL7 v2 MLLP on port 56000) and an **Agent** that routes incoming HL7 messages to the ADT processing bot.
 
 ## Running Commands Locally
 
