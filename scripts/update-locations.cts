@@ -1,6 +1,6 @@
 import { MedplumClient } from '@medplum/core';
 
-const parentOrgId = 'ba836894-122f-42d0-874b-83ea9557e4f3';
+const parentOrgName = 'SampleMed';
 
 async function main(): Promise<void> {
   if (!(process.env.MEDPLUM_CLIENT_ID && process.env.MEDPLUM_CLIENT_SECRET)) {
@@ -14,9 +14,14 @@ async function main(): Promise<void> {
     clientSecret: process.env.MEDPLUM_CLIENT_SECRET,
   });
 
+  const parentOrg = await medplum.searchOne('Location', { name: parentOrgName });
+  if (!parentOrg) {
+    throw new Error(`No Location found with name "${parentOrgName}"`);
+  }
+
   // Get all LEVEL-type Location
   const locations = await medplum.searchResources('Location', {
-    partof: `Location/${parentOrgId}`,
+    partof: `Location/${parentOrg.id}`,
     'physical-type': 'lvl',
   });
   for (const location of locations) {
